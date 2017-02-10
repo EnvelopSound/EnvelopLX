@@ -1,9 +1,15 @@
 import heronarts.lx.modulator.*;
 
 class Movers extends LXPattern {
+  
   final SawLFO hBase = new SawLFO(0, 360, 60000);
+  final BoundedParameter p1 = new BoundedParameter("P1");
+  final BoundedParameter p2 = new BoundedParameter("P2");
+  
   Movers(LX lx) {
     super(lx);
+    addParameter(p1);
+    addParameter(p2);
     startModulator(hBase);
     for (int i = 0; i < 15; ++i) {
       addLayer(new Mover(lx));

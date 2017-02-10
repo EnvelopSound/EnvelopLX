@@ -30,10 +30,11 @@ void setup() {
   
   lx.setPatterns(new LXPattern[] {
     new Movers(lx),
-    new SolidColorPattern(lx, #ffffff),
-    new SolidColorPattern(lx, #ff0000),
-    new SolidColorPattern(lx, #00ff00),
-    new SolidColorPattern(lx, #0000ff)
+    new SolidColorPattern(lx, #ffffff).setName("White"),
+    new SolidColorPattern(lx, #ff0000).setName("Red"),
+    new SolidColorPattern(lx, #00ff00).setName("Green"),
+    new SolidColorPattern(lx, #0000ff).setName("Blue"),
+    new IteratorTestPattern(lx)
   });
     
   try {
@@ -41,7 +42,14 @@ void setup() {
   } catch (Exception x) {
     throw new RuntimeException(x);
   }
-      
+  
+  try {
+    lx.engine.oscEngine.receiver(3344);
+  } catch (SocketException sx) {
+    throw new RuntimeException(sx);
+  }
+  lx.engine.oscEngine.addListener(new OscListener(lx));
+  
   lx.ui.addLayer(new UI3dContext(lx.ui)
     .addComponent(new UIRoomArchitecture())
     .addComponent(new UIPointCloud(lx).setPointSize(3))

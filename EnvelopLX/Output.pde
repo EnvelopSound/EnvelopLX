@@ -1,5 +1,6 @@
 import heronarts.lx.output.DDPDatagram;
 import heronarts.lx.output.LXDatagramOutput;
+import java.net.SocketException;
 
 static class Output extends LXDatagramOutput {
   Output(LX lx, Room room) throws IOException {
