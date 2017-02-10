@@ -13,3 +13,6 @@ When connected with an active Envelop server, real-time spatial audio feedback i
 ## Future Development
 
 - TouchOSC support will be coming soon
+
+
+![EnvelopLX](media/enveloplx-screenshot.png)
