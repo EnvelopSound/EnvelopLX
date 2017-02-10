@@ -1,7 +1,6 @@
 import heronarts.lx.output.DDPDatagram;
 import heronarts.lx.output.LXDatagramOutput;
 
-
 static class Output extends LXDatagramOutput {
   Output(LX lx, Room room) throws IOException {
     super(lx);
