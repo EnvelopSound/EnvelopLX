@@ -1,38 +1,91 @@
 import java.net.InetAddress;
 import java.util.Map;
 
-static class OscListener implements LXOscListener {
-  
-  private final LX lx;
-  
-  private final Map<InetAddress, LXOscClient> clients =
-    new HashMap<InetAddress, LXOscClient>();
-  
-  OscListener(LX lx) {
-    this.lx = lx;
-  }
-  
+class EnvelopOscMeterListener implements LXOscListener {
   public void oscMessage(OscMessage message) {
-    println("[" + message.getSource() + "] " + message);
-    if (message.matches("/lx/register/envelop")) {
-      LXOscClient client = clients.get(message.getSource()); 
-      if (client == null) {
+    if (message.matches("/server/dsp/meter/input")) {
+      envelop.source.setLevels(message);
+    } else if (message.matches("/server/dsp/meter/decoded")) {
+      envelop.decode.setLevels(message);
+    } else {
+      println(message);
+    }
+  }
+}
+
+class EnvelopOscSourceListener implements LXOscListener {
+    
+  public void oscMessage(OscMessage message) {
+    String[] parts = message.getAddressPattern().toString().split("/");
+    if (parts.length == 4) {
+      if (parts[1].equals("source")) {
         try {
-          clients.put(message.getSource(), new LXOscClient(lx, message.getSource()));
-        } catch (SocketException sx) {
-          sx.printStackTrace();
-        }
+          int index = Integer.parseInt(parts[2]) - 1;
+          if (index >= 0 && index < envelop.source.channels.length) {
+            Envelop.Source.Channel channel = envelop.source.channels[index];
+            if (parts[3].equals("active")) {
+              channel.active = message.getFloat() > 0;
+            } else if (parts[3].equals("xyz")) {
+              float rx = message.getFloat();
+              float ry = message.getFloat();
+              float rz = message.getFloat();
+              channel.xyz.set(rx, ry, rz);
+              channel.tx = venue.cx + rx * venue.xRange/2;
+              channel.ty = venue.cy + rz * venue.yRange/2;
+              channel.tz = venue.cz + ry * venue.zRange/2;
+            }
+          } else {
+            println("Invalid source channel message: " + message);
+          }
+        } catch (NumberFormatException nfx) {}
       }
     }
   }
 }
 
-static class LXOscClient implements LXOscListener {
+static class EnvelopOscControlListener implements LXOscListener {
+  
   private final LX lx;
-  private final LXOscEngine.Transmitter transmitter;
+  
+  private final Map<InetAddress, EnvelopOscClient> clients =
+    new HashMap<InetAddress, EnvelopOscClient>();
+  
+  EnvelopOscControlListener(LX lx) {
+    this.lx = lx;    
+  }
+  
+  public void oscMessage(OscMessage message) {
+    println("[" + message.getSource() + "] " + message);
+    EnvelopOscClient client = clients.get(message.getSource());
+    if (client == null) {
+      if (message.matches("/lx/register/envelop")) {
+        try {
+          clients.put(message.getSource(), new EnvelopOscClient(lx, message.getSource()));
+        } catch (SocketException sx) {
+          sx.printStackTrace();
+        }
+      }
+    } else {
+      client.oscMessage(message);
+    }
+  }
+}
+  
+static class EnvelopOscClient implements LXOscListener {
   
   private final static int NUM_KNOBS = 12;
   private final KnobListener[] knobs = new KnobListener[NUM_KNOBS]; 
+
+  private final LX lx; 
+  private final LXOscEngine.Transmitter transmitter;
+
+  EnvelopOscClient(LX lx, InetAddress source) throws SocketException {
+    this.lx = lx;
+    this.transmitter = lx.engine.osc.transmitter(source, 3434);
+    
+    setupListeners();
+    register();
+  }
 
   private class KnobListener implements LXParameterListener {
     
@@ -62,18 +115,6 @@ static class LXOscClient implements LXOscListener {
     public void onParameterChanged(LXParameter p) {
       sendKnobs(); 
     }
-  }
-  
-  LXOscClient(LX lx, InetAddress address) throws SocketException {
-    this.lx = lx;
-    this.transmitter = lx.engine.oscEngine.transmitter(address, 3434);
-    
-    lx.engine.oscEngine.addListener(this);
-    
-    setupListeners();
-    
-    // Register
-    register();
   }
   
   private void setupListeners() {
@@ -107,13 +148,18 @@ static class LXOscClient implements LXOscListener {
     } else if (message.matches("/lx/pattern/parameter")) {
       // TODO(mcslee): sanitize input
       knobs[message.getInt()].set(message.getDouble());
+    } else if (message.matches("/lx/tempo/bpm")) {
+      lx.tempo.setBpm(message.getDouble());
+      println("Set bpm to: " + lx.tempo.bpm());
+    } else if (message.matches("/lx/tempo/tap")) {
+      lx.tempo.trigger(false);
     }
   }
   
   void register() {
     sendMessage("/lx/register");
     sendPatterns();
-    registerKnobs(lx.getPattern());
+    // registerKnobs(lx.engine.getActivePattern());
     sendKnobs();
   }
   
@@ -145,18 +191,18 @@ static class LXOscClient implements LXOscListener {
   }
   
   private void sendPatterns() {
-    OscMessage message = new OscMessage("/lx/pattern/list");
-    LXPattern activePattern = lx.getPattern();
-    int active = 0, i = 0;
-    for (LXPattern pattern : lx.getPatterns()) {
-      message.add(pattern.getName());
-      if (pattern == activePattern) {
-        active = i;
-      }
-      ++i;
-    }
-    sendPacket(message);    
-    sendMessage("/lx/pattern/active", active);
+    //OscMessage message = new OscMessage("/lx/pattern/list");
+    //LXPattern activePattern = lx.engine.getPattern();
+    //int active = 0, i = 0;
+    //for (LXPattern pattern : lx.getPatterns()) {
+    //  message.add(pattern.getName());
+    //  if (pattern == activePattern) {
+    //    active = i;
+    //  }
+    //  ++i;
+    //}
+    //sendPacket(message);    
+    //sendMessage("/lx/pattern/active", active);
   }
   
   private void sendMessage(String addressPattern) {

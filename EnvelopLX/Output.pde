@@ -1,22 +1,38 @@
-import heronarts.lx.output.DDPDatagram;
-import heronarts.lx.output.LXDatagramOutput;
 import java.net.SocketException;
 
-static class Output extends LXDatagramOutput {
-  Output(LX lx, Room room) throws IOException {
+LXOutput getOutput(LX lx) throws IOException {
+  switch (environment) {
+    case MIDWAY: return new MidwayOutput(lx);
+    case SATELLITE: return new SatelliteOutput(lx);
+  }
+  return null;
+}
+    
+class MidwayOutput extends LXDatagramOutput {
+  MidwayOutput(LX lx) throws IOException {
     super(lx);
-    
     int columnIp = 101;
-    for (Column column : room.columns) {
-      int[] indices = new int[column.points.size()];
-      int pi = 0;
-      for (LXPoint p : column.points) {
-        indices[pi++] = p.index;
+    for (Column column : venue.columns) {
+      addDatagram(new DDPDatagram(column).setAddress("10.0.0." + (columnIp++)));
+    }    
+  }
+}
+
+class SatelliteOutput extends LXDatagramOutput {
+  SatelliteOutput(LX lx) throws IOException {
+    super(lx);
+    int universe = 0;
+    int columnIp = 1;
+    for (Column column : venue.columns) {
+      for (Rail rail : column.rails) {
+        // Top to bottom
+        int[] indices = new int[rail.size];
+        for (int i = 0; i < indices.length; i++) {
+          indices[indices.length-1-i] = rail.points.get(i).index;
+        }
+        addDatagram(new ArtNetDatagram(indices, universe++).setAddress("192.168.0." + columnIp));
       }
-      addDatagram(new DDPDatagram(indices).setAddress("10.0.0." + (columnIp++)));
+      ++columnIp;
     }
-    
-    gammaCorrection.setValue(1);
-    enabled.setValue(false);
   }
 }

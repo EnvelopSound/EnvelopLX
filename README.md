@@ -6,7 +6,6 @@ When connected with an active Envelop server, real-time spatial audio feedback i
 ## Installation
 
 - Download and install [Processing 3 &rarr;](https://processing.org/download/?processing)
-- Select "Add Tool..." from the "Tools" menu, click on the "Libraries" tab and install Minim
 - Download or clone this repository into your Processing sketchbook folder
 - Open EnvelopLX and run the sketch
 
