@@ -256,8 +256,11 @@ static class Rail extends LXModel {
   
   final static float HEIGHT = 12*FEET;
   
+  public final float theta;
+  
   Rail(EnvelopModel.Config.Rail rail, LXTransform transform) {
     super(new Fixture(rail, transform));
+    this.theta = atan2(transform.z(), transform.x());
   }
   
   private static class Fixture extends LXAbstractFixture {

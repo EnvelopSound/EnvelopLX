@@ -120,33 +120,53 @@ class UIEnvelopDecode extends UICollapsibleSection {
   }
 }
 
-class UIEnvelopMeter extends UI2dComponent {
-    
-  private final Envelop.Meter meter;
-  
+class UIEnvelopMeter extends UI2dContainer {
+      
   public UIEnvelopMeter(UI ui, Envelop.Meter meter, float x, float y, float w, float h) {
     super(x, y, w, h);
-    this.meter = meter;
     setBackgroundColor(ui.theme.getDarkBackgroundColor());
     setBorderColor(ui.theme.getControlBorderColor());
-  }
-  
-  public void onDraw(UI ui, PGraphics pg) {
-    BoundedParameter[] channels = this.meter.getChannels();
-    float bandWidth = ((width-2) - (channels.length-1)) / channels.length;
     
-    pg.noStroke();
-    pg.fill(ui.theme.getPrimaryColor());
-    int x = 1;
+    NormalizedParameter[] channels = meter.getChannels();
+    float bandWidth = ((width-2) - (channels.length-1)) / channels.length;
+    int xp = 1;
     for (int i = 0; i < channels.length; ++i) {
       int nextX = Math.round(1 + (bandWidth+1) * (i+1));
-      float h = (this.height-2) * channels[i].getValuef(); 
-      pg.rect(x, this.height-1-h, nextX-x-1, h);
-      x = nextX;
+      new UIEnvelopChannel(channels[i], xp, 1, nextX-xp-1, this.height-2).addToContainer(this);
+      xp = nextX;
     }
-        
-    // TODO(mcslee): do this properly, on a timer
-    redraw();
+  }
+  
+  class UIEnvelopChannel extends UI2dComponent implements UIModulationSource {
+    
+    private final NormalizedParameter channel;
+    private float lev = 0;
+    
+    UIEnvelopChannel(final NormalizedParameter channel, float x, float y, float w, float h) {
+      super(x, y, w, h);
+      this.channel = channel;
+      addLoopTask(new LXLoopTask() {
+        public void loop(double deltaMs) {
+          float l2 = UIEnvelopChannel.this.height * channel.getNormalizedf();
+          if (l2 != lev) {
+            lev = l2;
+            redraw();
+          }
+        }
+      });
+    }
+    
+    public void onDraw(UI ui, PGraphics pg) {
+      if (lev > 0) {
+        pg.noStroke();
+        pg.fill(ui.theme.getPrimaryColor());
+        pg.rect(0, this.height-lev, this.width, lev);
+      }
+    }
+    
+    public LXNormalizedParameter getModulationSource() {
+      return this.channel;
+    }
   }
 }
 

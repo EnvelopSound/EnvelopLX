@@ -53,6 +53,7 @@ void setup() {
       }
         
       lx.registerPatterns(new Class[]{
+        JavascriptPattern.class,
         heronarts.p3lx.pattern.SolidColorPattern.class,
         IteratorTestPattern.class
       });
@@ -66,25 +67,24 @@ void setup() {
       ui.theme.setSecondaryColor(#00a08b);
       ui.theme.setAttentionColor(#a00044);
       ui.theme.setFocusColor(#0094aa);
-      ui.theme.setControlBorderColor(#292929);
     }
     
     @Override
     protected void onUIReady(LXStudio lx, LXStudio.UI ui) {
       ui.leftPane.audio.setVisible(false);
-      ui.main.addComponent(getUIVenue());
-      ui.main.addComponent(new UISoundObjects());
-      ui.main.setPhi(PI/32).setMinRadius(2*FEET).setMaxRadius(48*FEET);
+      ui.preview.addComponent(getUIVenue());
+      ui.preview.addComponent(new UISoundObjects());
+      ui.preview.setPhi(PI/32).setMinRadius(2*FEET).setMaxRadius(48*FEET);
       new UIEnvelopSource(ui, 0, 0, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 2);
       new UIEnvelopDecode(ui, 0, 0, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 3);
     }
   };
+  
   long setupFinish = System.nanoTime();
-  println("Initialization time: " + ((setupFinish - setupStart) / 1000000) + "ms"); 
+  println("Total initialization time: " + ((setupFinish - setupStart) / 1000000) + "ms"); 
 }
 
 void draw() {
-  background(lx.ui.theme.getDarkBackgroundColor());
 }
 
 static class Envelop extends LXRunnable {
@@ -93,7 +93,7 @@ static class Envelop extends LXRunnable {
   public final Decode decode = new Decode();
   
   public Envelop(LX lx) {
-    super(lx);
+    super(lx, "Envelop");
     addSubcomponent(source);
     addSubcomponent(decode);
     source.start();
@@ -133,18 +133,27 @@ static class Envelop extends LXRunnable {
     private final double[] targets;
     
     public final BoundedParameter gain = (BoundedParameter)
-      new BoundedParameter("Gain", 0, -24, 24).setUnits(LXParameter.Units.DECIBELS);
+      new BoundedParameter("Gain", 0, -24, 24)
+      .setDescription("Sets the dB gain of the meter")
+      .setUnits(LXParameter.Units.DECIBELS);
     
     public final BoundedParameter range = (BoundedParameter)
-      new BoundedParameter("Range", 24, 6, 96).setUnits(LXParameter.Units.DECIBELS);
+      new BoundedParameter("Range", 24, 6, 96)
+      .setDescription("Sets the dB range of the meter")
+      .setUnits(LXParameter.Units.DECIBELS);
       
     public final BoundedParameter attack = (BoundedParameter)
-      new BoundedParameter("Attack", 25, 0, 50).setUnits(LXParameter.Units.MILLISECONDS);
+      new BoundedParameter("Attack", 25, 0, 50)
+      .setDescription("Sets the attack time of the meter response")
+      .setUnits(LXParameter.Units.MILLISECONDS);
       
     public final BoundedParameter release = (BoundedParameter)
-      new BoundedParameter("Release", 50, 0, 500).setUnits(LXParameter.Units.MILLISECONDS);
+      new BoundedParameter("Release", 50, 0, 500)
+      .setDescription("Sets the release time of the meter response")
+      .setUnits(LXParameter.Units.MILLISECONDS);
     
-    protected Meter(int numChannels) {
+    protected Meter(String label, int numChannels) {
+      super(label);
       targets = new double[numChannels];
       addParameter(gain);
       addParameter(range);
@@ -153,7 +162,7 @@ static class Envelop extends LXRunnable {
     }
     
     public void run(double deltaMs) {
-      BoundedParameter[] channels = getChannels();
+      NormalizedParameter[] channels = getChannels();
       for (int i = 0; i < channels.length; ++i) {
         double target = this.targets[i];
         double value = channels[i].getValue();
@@ -170,13 +179,13 @@ static class Envelop extends LXRunnable {
       }
     }
     
-    protected abstract BoundedParameter[] getChannels();
+    protected abstract NormalizedParameter[] getChannels();
   }
   
   class Source extends Meter {
     public static final int NUM_CHANNELS = 16;
     
-    class Channel extends BoundedParameter {
+    class Channel extends NormalizedParameter {
       
       public final int index;
       public boolean active;
@@ -196,14 +205,13 @@ static class Envelop extends LXRunnable {
     public final Channel[] channels = new Channel[NUM_CHANNELS];
     
     Source() {
-      super(NUM_CHANNELS);
+      super("Source", NUM_CHANNELS);
       for (int i = 0; i < channels.length; ++i) {
-        channels[i] = new Channel(i);
-        addParameter(channels[i]);
+        addParameter(channels[i] = new Channel(i));
       }
     }
     
-    public BoundedParameter[] getChannels() {
+    public NormalizedParameter[] getChannels() {
       return this.channels;
     }
   }
@@ -211,17 +219,16 @@ static class Envelop extends LXRunnable {
   class Decode extends Meter {
     
     public static final int NUM_CHANNELS = 8;
-    public final BoundedParameter[] channels = new BoundedParameter[NUM_CHANNELS];
+    public final NormalizedParameter[] channels = new NormalizedParameter[NUM_CHANNELS];
     
     Decode() {
-      super(NUM_CHANNELS);
+      super("Decode", NUM_CHANNELS);
       for (int i = 0; i < channels.length; ++i) {
-        channels[i] = new BoundedParameter("Source-" + (i+1));
-        addParameter(channels[i]);
+        addParameter(channels[i] = new NormalizedParameter("Decode-" + (i+1)));
       }
     }
     
-    public BoundedParameter[] getChannels() {
+    public NormalizedParameter[] getChannels() {
       return this.channels;
     }
   }
