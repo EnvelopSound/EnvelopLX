@@ -24,7 +24,7 @@ EnvelopModel venue;
 void setup() {
   long setupStart = System.nanoTime();
   // LX.logInitTiming();
-  size(1280, 800, P3D);
+  size(1280, 960, P3D);
 
   venue = getModel();
   lx = new LXStudio(this, venue) {
@@ -87,7 +87,7 @@ void setup() {
 void draw() {
 }
 
-static class Envelop extends LXRunnable {
+static class Envelop extends LXRunnableComponent {
   
   public final Source source = new Source();
   public final Decode decode = new Decode();
@@ -128,7 +128,7 @@ static class Envelop extends LXRunnable {
     super.load(lx, obj);
   }
   
-  abstract class Meter extends LXRunnable {
+  abstract class Meter extends LXRunnableComponent {
 
     private final double[] targets;
     

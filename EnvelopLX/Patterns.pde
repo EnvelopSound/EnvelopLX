@@ -1,5 +1,6 @@
 import heronarts.lx.modulator.*;
 import heronarts.p3lx.ui.studio.device.*;
+import java.util.Stack;
 
 public static abstract class EnvelopPattern extends LXPattern {
   
@@ -110,15 +111,67 @@ public static class Test extends LXPattern {
   }
 }
 
-public static class Palette extends LXPattern {
-  public Palette(LX lx) {
+public static class Drops extends EnvelopPattern {
+  
+  private final Stack<Drop> availableDrops = new Stack<Drop>();
+
+  public Drops(LX lx) {
     super(lx);
   }
   
-  public void run(double deltaMs) {
-    for (LXPoint p : model.points) {
-      colors[p.index] = palette.getColor(p);
+  private void triggerDrop() {
+    if (availableDrops.empty()) {
+      Drop drop = new Drop(lx);
+      addLayer(drop);
+      availableDrops.push(drop);
     }
+    availableDrops.pop().initialize();
+  }
+    
+  private class Drop extends LXLayer {
+    
+    private final static double GRAVITY = -386;
+    
+    private final Accelerator accel = new Accelerator(model.yMax, 0, GRAVITY);
+    
+    private Rail rail;
+    private boolean active = false;
+    
+    Drop(LX lx) {
+      super(lx);
+      addModulator(this.accel);
+    }
+    
+    void initialize() {
+      int railIndex = (int) Math.round(Math.random() * (Drops.this.model.rails.size()-1));
+      this.rail = Drops.this.model.rails.get(railIndex);
+      this.accel.trigger();
+      this.active = true;
+    }
+    
+    public void run(double deltaMs) {
+      if (this.active) {
+        for (LXPoint p : this.rail.points) {
+          float b = 100 - (100 / 12*INCHES) * abs(p.y - this.accel.getValuef());
+          if (b > 0) {
+            addColor(p.index, palette.getColor(p, b));
+          }
+        }
+        if (this.accel.getValue() < -12*INCHES) {
+          this.active = false;
+          availableDrops.push(this);
+        }
+      }
+    }
+  }
+  
+  @Override
+  public void noteOnReceived(MidiNoteOn note) {
+    triggerDrop();
+  }
+  
+  public void run(double deltaMs) {
+    setColors(0);
   }
 }
 
