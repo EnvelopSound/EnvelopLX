@@ -21,7 +21,7 @@ LXStudio lx;
 Envelop envelop;
 EnvelopModel venue;
 
-void setup() {
+void setup() {  
   long setupStart = System.nanoTime();
   // LX.logInitTiming();
   size(1280, 960, P3D);

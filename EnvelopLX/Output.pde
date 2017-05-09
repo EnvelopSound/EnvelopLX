@@ -30,7 +30,7 @@ class SatelliteOutput extends LXDatagramOutput {
         // Top to bottom
         int[] indices = new int[rail.size];
         for (int i = 0; i < indices.length; i++) {
-          indices[indices.length-1-i] = rail.points.get(i).index;
+          indices[indices.length-1-i] = rail.points[i].index;
         }
         addDatagram(new ArtNetDatagram(indices, 512, universe++).setAddress("192.168.0." + columnIp));
       }

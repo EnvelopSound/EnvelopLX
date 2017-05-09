@@ -222,10 +222,10 @@ public static class Flash extends LXPattern implements UIPattern {
     addParameter("manual", manual);
     addParameter("midi", midi);
     addParameter("brightness", brightness);
-    addParameter("velocitySensitivity", velocitySensitivity);
     addParameter("attack", attack);
     addParameter("decay", decay);
     addParameter("shape", shape);
+    addParameter("velocitySensitivity", velocitySensitivity);    
   }
   
   @Override
@@ -264,19 +264,19 @@ public static class Flash extends LXPattern implements UIPattern {
   }
     
   @Override
-  public void buildControlUI(UI ui, UIPatternControl container) {
-    container.setContentWidth(216);
-    new UIADWave(ui, 0, 0, container.getContentWidth(), 64).addToContainer(container);
+  public void buildDeviceUI(UI ui, UIPatternDevice device) {
+    device.setContentWidth(216);
+    new UIADWave(ui, 0, 0, device.getContentWidth(), 70).addToContainer(device);
     
-    new UIButton(0, 70, 172, 16).setLabel("Manual Trigger").setParameter(this.manual).addToContainer(container);
+    new UIButton(0, 72, 172, 16).setLabel("Manual Trigger").setParameter(this.manual).addToContainer(device);
 
-    new UIKnob(0, 90).setParameter(this.brightness).addToContainer(container);
-    new UIKnob(44, 90).setParameter(this.attack).addToContainer(container);
-    new UIKnob(88, 90).setParameter(this.decay).addToContainer(container);
-    new UIKnob(132, 90).setParameter(this.shape).addToContainer(container);
+    new UIKnob(0, 96).setParameter(this.brightness).addToContainer(device);
+    new UIKnob(44, 96).setParameter(this.attack).addToContainer(device);
+    new UIKnob(88, 96).setParameter(this.decay).addToContainer(device);
+    new UIKnob(132, 96).setParameter(this.shape).addToContainer(device);
     
-    new UIButton(176, 70, 40, 16).setParameter(this.midi).setLabel("Midi").addToContainer(container);
-    velocityKnob = (UIKnob) new UIKnob(176, 90).setParameter(this.velocitySensitivity).setEnabled(this.midi.isOn()).addToContainer(container);
+    new UIButton(176, 72, 40, 16).setParameter(this.midi).setLabel("Midi").addToContainer(device);
+    velocityKnob = (UIKnob) new UIKnob(176, 96).setParameter(this.velocitySensitivity).setEnabled(this.midi.isOn()).addToContainer(device);
      
   }
   
@@ -357,17 +357,17 @@ public class EnvelopObjects extends LXPattern implements UIPattern {
     addParameter(response);
   }
   
-  public void buildControlUI(UI ui, UIPatternControl container) {
+  public void buildDeviceUI(UI ui, UIPatternDevice device) {
     int i = 0;
     for (LXLayer layer : getLayers()) {
-      new UIButton((i % 4)*33, (i/4)*22, 28, 18).setLabel(Integer.toString(i+1)).setParameter(((Layer)layer).active).addToContainer(container);
+      new UIButton((i % 4)*33, (i/4)*22, 28, 18).setLabel(Integer.toString(i+1)).setParameter(((Layer)layer).active).addToContainer(device);
       ++i;
     }
     int knobSpacing = UIKnob.WIDTH + 4;
-    new UIKnob(0, 92).setParameter(size).addToContainer(container);
-    new UIKnob(knobSpacing, 92).setParameter(response).addToContainer(container);
+    new UIKnob(0, 96).setParameter(size).addToContainer(device);
+    new UIKnob(knobSpacing, 96).setParameter(response).addToContainer(device);
 
-    container.setContentWidth(3*knobSpacing - 4);
+    device.setContentWidth(3*knobSpacing - 4);
   }
   
   class Layer extends LXLayer {
