@@ -34,7 +34,7 @@ abstract class UIVenue extends UI3dComponent {
     pg.stroke(#202020);
     for (Column column : venue.columns) {
       pg.translate(column.cx, 0, column.cz);
-      pg.rotateY(-column.theta);
+      pg.rotateY(-column.azimuth);
       pg.translate(0, 9*INCHES, 0);
       pg.rotateX(Column.SPEAKER_ANGLE);
       pg.box(21*INCHES, 16*INCHES, 15*INCHES);
@@ -45,7 +45,7 @@ abstract class UIVenue extends UI3dComponent {
       pg.rotateX(-Column.SPEAKER_ANGLE);
       pg.box(21*INCHES, 16*INCHES, 15*INCHES);
       pg.rotateX(Column.SPEAKER_ANGLE);
-      pg.rotateY(+column.theta);
+      pg.rotateY(column.azimuth);
       pg.translate(-column.cx, -11*FEET - 3*INCHES, -column.cz);
     }
   }

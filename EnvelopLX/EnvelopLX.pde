@@ -16,7 +16,7 @@ enum Environment {
 }
 
 // Change this line if you want a different configuration!
-Environment environment = Environment.MIDWAY;  
+Environment environment = Environment.SATELLITE;  
 LXStudio lx;
 Envelop envelop;
 EnvelopModel venue;
@@ -67,6 +67,7 @@ void setup() {
       ui.theme.setSecondaryColor(#00a08b);
       ui.theme.setAttentionColor(#a00044);
       ui.theme.setFocusColor(#0094aa);
+      ui.theme.setSurfaceColor(#cc3300);
     }
     
     @Override

@@ -38,10 +38,19 @@ public static class Helix extends RotationPattern {
   private final CompoundParameter size = (CompoundParameter)
     new CompoundParameter("Size", 2*FEET, 6*INCHES, 8*FEET)
     .setDescription("Size of the corkskrew");
+    
+  private final CompoundParameter coil = (CompoundParameter)
+    new CompoundParameter("Coil", 1, .25, 2.5)
+    .setExponent(.5)
+    .setDescription("Coil amount");
+    
+  private final DampedParameter dampedCoil = new DampedParameter(coil, .2);
   
   public Helix(LX lx) {
     super(lx);
     addParameter("size", this.size);
+    addParameter("coil", this.coil);
+    startModulator(dampedCoil);
     setColors(0);
   }
   
@@ -49,10 +58,11 @@ public static class Helix extends RotationPattern {
     float phaseV = this.phase.getValuef();
     float sizeV = this.size.getValuef();
     float falloff = 200 / sizeV;
+    float coil = this.dampedCoil.getValuef();
     
     for (Rail rail : model.rails) {
-      float yp = -sizeV + ((phaseV + (PI + rail.theta)) % TWO_PI) / TWO_PI * (model.yRange + 2*sizeV);
-      float yp2 = -sizeV + ((phaseV + TWO_PI + rail.theta) % TWO_PI) / TWO_PI * (model.yRange + 2*sizeV);
+      float yp = -sizeV + ((phaseV + (TWO_PI + PI + coil * rail.theta)) % TWO_PI) / TWO_PI * (model.yRange + 2*sizeV);
+      float yp2 = -sizeV + ((phaseV + TWO_PI + coil * rail.theta) % TWO_PI) / TWO_PI * (model.yRange + 2*sizeV);
       for (LXPoint p : rail.points) {
         float d1 = 100 - falloff*abs(p.y - yp);
         float d2 = 100 - falloff*abs(p.y - yp2);
@@ -85,8 +95,8 @@ public static class Warble extends RotationPattern {
     super(lx);
     startModulator(this.interpDamped);
     startModulator(this.depthDamped);
-    addParameter("interp", this.interp);
     addParameter("size", this.size);
+    addParameter("interp", this.interp);
     addParameter("depth", this.depth);
     setColors(0);
   }
@@ -131,20 +141,22 @@ public static class Raindrops extends EnvelopPattern implements UIPattern {
   
   private final Stack<Drop> availableDrops = new Stack<Drop>();
 
-  public final BooleanParameter auto = new BooleanParameter("Auto", false)
-  .setDescription("Whether drops automatically fall");
+  public final BooleanParameter auto =
+    new BooleanParameter("Auto", false)
+    .setDescription("Whether drops automatically fall");
   
-  public final BooleanParameter midi = new BooleanParameter("Midi", true)
-  .setDescription("Whether drops fall in response to MIDI notes");
-
-  public final CompoundParameter gravity = new CompoundParameter("Gravity", -386, -25, -500)
-  .setDescription("Gravity rate for drops to fall");
+  public final CompoundParameter gravity = (CompoundParameter)
+    new CompoundParameter("Gravity", -386, -10, -500)
+    .setExponent(2)
+    .setDescription("Gravity rate for drops to fall");
   
-  public final CompoundParameter size = new CompoundParameter("Size", 4*INCHES, 1*INCHES, 48*INCHES)
-  .setDescription("Size of the raindrops");
+  public final CompoundParameter size =
+    new CompoundParameter("Size", 4*INCHES, 1*INCHES, 48*INCHES)
+    .setDescription("Size of the raindrops");
   
-  public final CompoundParameter rate = new CompoundParameter("Rate", .5, 30)
-  .setDescription("Rate at which new drops automatically fall");
+  public final CompoundParameter rate =
+    new CompoundParameter("Rate", .5, 30)
+    .setDescription("Rate at which new drops automatically fall");
 
   private final Click click = new Click("click", new FunctionalParameter() {
     public double getValue() {
@@ -155,7 +167,6 @@ public static class Raindrops extends EnvelopPattern implements UIPattern {
   public Raindrops(LX lx) {
     super(lx);
     addParameter("auto", auto);
-    addParameter("midi", midi);
     addParameter("gravity", gravity);
     addParameter("size", size);
     addParameter("rate", rate);
@@ -210,9 +221,7 @@ public static class Raindrops extends EnvelopPattern implements UIPattern {
   
   @Override
   public void noteOnReceived(MidiNoteOn note) {
-    if (this.midi.isOn()) {
-      triggerDrop();
-    }
+    triggerDrop();
   }
   
   public void run(double deltaMs) {
@@ -223,14 +232,12 @@ public static class Raindrops extends EnvelopPattern implements UIPattern {
   }
   
   public void buildDeviceUI(UI ui, UIPatternDevice device) {
-    device.setLayout(UI2dContainer.Layout.HORIZONTAL);
-    device.setChildMargin(4);
+    device.setLayout(UI2dContainer.Layout.VERTICAL);
+    device.setChildMargin(6);
     new UIKnob(this.gravity).addToContainer(device);
     new UIKnob(this.size).addToContainer(device);
     new UIKnob(this.rate).addToContainer(device);
-    device.setLayout(UI2dContainer.Layout.NONE);
-    new UIButton(0, device.getContentHeight() - 14, 40, 14).setParameter(this.auto).setLabel("Auto").addToContainer(device);
-    new UIButton(44, device.getContentHeight() - 14, 40, 14).setParameter(this.midi).setLabel("Midi").addToContainer(device);
+    new UIButton(0, 0, device.getContentWidth(), 14).setParameter(this.auto).setLabel("Auto").addToContainer(device);
   }
 }
 
@@ -325,17 +332,17 @@ public static class Flash extends LXPattern implements UIPattern {
   @Override
   public void buildDeviceUI(UI ui, UIPatternDevice device) {
     device.setContentWidth(216);
-    new UIADWave(ui, 0, 0, device.getContentWidth(), 70).addToContainer(device);
+    new UIADWave(ui, 0, 0, device.getContentWidth(), 90).addToContainer(device);
     
-    new UIButton(0, 72, 172, 16).setLabel("Manual Trigger").setParameter(this.manual).setTriggerable(true).addToContainer(device);
+    new UIButton(0, 92, 172, 16).setLabel("Manual Trigger").setParameter(this.manual).setTriggerable(true).addToContainer(device);
 
-    new UIKnob(0, 96).setParameter(this.brightness).addToContainer(device);
-    new UIKnob(44, 96).setParameter(this.attack).addToContainer(device);
-    new UIKnob(88, 96).setParameter(this.decay).addToContainer(device);
-    new UIKnob(132, 96).setParameter(this.shape).addToContainer(device);
+    new UIKnob(0, 116).setParameter(this.brightness).addToContainer(device);
+    new UIKnob(44, 116).setParameter(this.attack).addToContainer(device);
+    new UIKnob(88, 116).setParameter(this.decay).addToContainer(device);
+    new UIKnob(132, 116).setParameter(this.shape).addToContainer(device);
     
-    new UIButton(176, 72, 40, 16).setParameter(this.midi).setLabel("Midi").addToContainer(device);
-    velocityKnob = (UIKnob) new UIKnob(176, 96).setParameter(this.velocitySensitivity).setEnabled(this.midi.isOn()).addToContainer(device);
+    new UIButton(176, 92, 40, 16).setParameter(this.midi).setLabel("Midi").addToContainer(device);
+    velocityKnob = (UIKnob) new UIKnob(176, 116).setParameter(this.velocitySensitivity).setEnabled(this.midi.isOn()).addToContainer(device);
      
   }
   
@@ -381,22 +388,40 @@ public static class Flash extends LXPattern implements UIPattern {
 
 public class EnvelopDecode extends LXPattern {
   
-  public final BoundedParameter fade = new BoundedParameter("Fade", 1*FEET, 0.001, 4*FEET); 
+  public final CompoundParameter mode = new CompoundParameter("Mode", 0);
+  public final CompoundParameter fade = new CompoundParameter("Fade", 1*FEET, 0.001, 6*FEET);
+  public final CompoundParameter damping = (CompoundParameter)
+    new CompoundParameter("Damping", 10, 10, .1)
+    .setExponent(.25);
+    
+  private final DampedParameter[] dampedDecode = new DampedParameter[envelop.decode.channels.length]; 
   
   public EnvelopDecode(LX lx) {
     super(lx);
-    addParameter(fade);
+    addParameter("mode", mode);
+    addParameter("fade", fade);
+    addParameter("damping", damping);
+    int d = 0;
+    for (LXParameter parameter : envelop.decode.channels) {
+      startModulator(dampedDecode[d++] = new DampedParameter(parameter, damping));
+    }
   }
   
   public void run(double deltaMs) {
     float fv = fade.getValuef();
     float falloff = 100 / fv;
+    float mode = this.mode.getValuef();
+    float faden = fade.getNormalizedf();
     for (Column column : venue.columns) {
-      float level = envelop.decode.channels[column.index].getValuef() * (model.yRange / 2.);
+      // float levelf = envelop.decode.channels[column.index].getValuef();
+      float levelf = this.dampedDecode[column.index].getValuef();
+      float level = levelf * (model.yRange / 2.);
       for (LXPoint p : column.points) {
         float yn = abs(p.y - model.cy);
-        float b = falloff * (level - yn);
-        colors[p.index] = palette.getColor(p, constrain(b, 0, 100));
+        float b0 = min(100, falloff * (level - yn));
+        float b1max = lerp(100, 100*levelf, faden);
+        float b1 = (yn > level) ? max(0, b1max - 80*(yn-level)) : lerp(0, b1max, yn / level); 
+        colors[p.index] = palette.getColor(p, lerp(b0, b1, mode));
       }
     }
   }
@@ -419,12 +444,16 @@ public class EnvelopObjects extends LXPattern implements UIPattern {
   public void buildDeviceUI(UI ui, UIPatternDevice device) {
     int i = 0;
     for (LXLayer layer : getLayers()) {
-      new UIButton((i % 4)*33, (i/4)*22, 28, 18).setLabel(Integer.toString(i+1)).setParameter(((Layer)layer).active).addToContainer(device);
+      new UIButton((i % 4)*33, (i/4)*28, 28, 24)
+      .setLabel(Integer.toString(i+1))
+      .setParameter(((Layer)layer).active)
+      .setTextAlignment(PConstants.CENTER, PConstants.CENTER)
+      .addToContainer(device);
       ++i;
     }
     int knobSpacing = UIKnob.WIDTH + 4;
-    new UIKnob(0, 96).setParameter(size).addToContainer(device);
-    new UIKnob(knobSpacing, 96).setParameter(response).addToContainer(device);
+    new UIKnob(0, 116).setParameter(size).addToContainer(device);
+    new UIKnob(knobSpacing, 116).setParameter(response).addToContainer(device);
 
     device.setContentWidth(3*knobSpacing - 4);
   }
@@ -560,7 +589,10 @@ public class Tron extends LXPattern {
 
 public class Noise extends LXPattern {
   
-  public final CompoundParameter scale = new CompoundParameter("Scale", 10, 5, 40);
+  public final CompoundParameter scale =
+    new CompoundParameter("Scale", 10, 5, 40);
+    
+  private final DampedParameter scaleDamped = new DampedParameter(scale, 5); 
   
   public final CompoundParameter xSpeed = (CompoundParameter)
     new CompoundParameter("XSpd", 0, -6, 6)
@@ -574,9 +606,14 @@ public class Noise extends LXPattern {
     new CompoundParameter("ZSpd", 1, -6, 6)
     .setPolarity(LXParameter.Polarity.BIPOLAR);
   
-  public final CompoundParameter floor = new CompoundParameter("Floor", 0, -2, 2);
+  public final CompoundParameter floor =
+    new CompoundParameter("Floor", 0, -2, 2);
+    
+  private final DampedParameter floorDamped = new DampedParameter(floor, 1);    
   
   public final CompoundParameter range = new CompoundParameter("Range", 1, .2, 4);
+  
+  private final DampedParameter rangeDamped = new DampedParameter(range, 1);
   
   public final CompoundParameter xOffset = (CompoundParameter)
     new CompoundParameter("XOffs", 0, -1, 1)
@@ -601,23 +638,27 @@ public class Noise extends LXPattern {
     addParameter("xOffset", xOffset);
     addParameter("yOffset", yOffset);
     addParameter("zOffset", zOffset);
+    startModulator(scaleDamped);
+    startModulator(floorDamped);
+    startModulator(rangeDamped);
   }
   
   private class Accum {
     private float accum = 0;
     private int equalCount = 0;
-    private float sign = 1;
     
     void accum(double deltaMs, float speed) {
-      float newAccum = (float) (this.accum + this.sign * deltaMs * speed / 4000.);
-      if (newAccum == this.accum) {
-        if (++this.equalCount >= 5) {
-          this.equalCount = 0;
-          this.sign = -sign;
-          newAccum = this.accum + sign*.01;
+      if (speed > 0) {
+        float newAccum = (float) (this.accum + deltaMs * speed * 0.00025);
+        if (newAccum == this.accum) {
+          if (++this.equalCount >= 5) {
+            println("Reset accum!");
+            this.equalCount = 0;
+            newAccum = 0;
+          }
         }
+        this.accum = newAccum;
       }
-      this.accum = newAccum;
     }
   };
   
@@ -631,15 +672,197 @@ public class Noise extends LXPattern {
     yAccum.accum(deltaMs, ySpeed.getValuef());
     zAccum.accum(deltaMs, zSpeed.getValuef());
     
-    float sf = scale.getValuef() / 1000.;
-    float rf = range.getValuef();
-    float ff = floor.getValuef();
+    float sf = scaleDamped.getValuef() / 1000.;
+    float rf = rangeDamped.getValuef();
+    float ff = floorDamped.getValuef();
     float xo = xOffset.getValuef();
     float yo = yOffset.getValuef();
     float zo = zOffset.getValuef();
     for (LXPoint p :  model.points) {
-      float b = ff + rf * noise(sf*p.x + xo + xAccum.accum, sf*p.y + yo + yAccum.accum, sf*p.z + zo + zAccum.accum);
+      float b = ff + rf * noise(sf*p.x + xo - xAccum.accum, sf*p.y + yo - yAccum.accum, sf*p.z + zo - zAccum.accum);
       colors[p.index] = palette.getColor(p, constrain(b*100, 0, 100));
+    }
+  }
+}
+
+public class EnvelopShimmer extends EnvelopPattern {
+  
+  private final int BUFFER_SIZE = 512; 
+  private final float[][] buffer = new float[model.columns.size()][BUFFER_SIZE];
+  private int bufferPos = 0;
+  
+  public final CompoundParameter interp = new CompoundParameter("Mode", 0); 
+  
+  public final CompoundParameter speed = (CompoundParameter)
+    new CompoundParameter("Speed", 1, 5, .1)
+    .setDescription("Speed of the sound waves emanating from the speakers");
+    
+    public final CompoundParameter taper = (CompoundParameter)
+    new CompoundParameter("Taper", 1, 0, 10)
+    .setExponent(2)
+    .setDescription("Amount of tapering applied to the signal");
+  
+  private final DampedParameter speedDamped = new DampedParameter(speed, 1);
+  
+  public EnvelopShimmer(LX lx) {
+    super(lx);
+    addParameter("intern", interp);
+    addParameter("speed", speed);
+    addParameter("taper", taper);
+    startModulator(speedDamped);
+    for (float[] buffer : this.buffer) {
+      for (int i = 0; i < buffer.length; ++i) {
+        buffer[i] = 0;
+      }
+    }
+  }
+  
+  public void run(double deltaMs) {
+    float speed = this.speedDamped.getValuef();
+    float interp = this.interp.getValuef();
+    float taper = this.taper.getValuef() * lerp(3, 1, interp); 
+    for (Column column : model.columns) {
+      float[] buffer = this.buffer[column.index];
+      buffer[this.bufferPos] = envelop.decode.channels[column.index].getValuef();
+      for (Rail rail : column.rails) {
+        for (int i = 0; i < rail.points.length; ++i) {
+          LXPoint p = rail.points[i];
+          int i3 = i % (rail.points.length/3);
+          float td = abs(i3 - rail.points.length / 6);
+          float threeWay = getValue(buffer, speed * td);
+          float nd = abs(i - rail.points.length / 2);
+          float normal = getValue(buffer, speed * nd);
+          float bufferValue = lerp(threeWay, normal, interp);
+          float d = lerp(td, nd, interp);
+          colors[p.index] = palette.getColor(p, max(0, 100 * bufferValue - d*taper));
+        }
+      }      
+    }
+    --bufferPos;
+    if (bufferPos < 0) {
+      bufferPos = BUFFER_SIZE - 1;
+    }
+  }
+  
+  private float getValue(float[] buffer, float bufferOffset) {
+    int offsetFloor = (int) bufferOffset;
+    int bufferTarget1 = (bufferPos + offsetFloor) % BUFFER_SIZE;
+    int bufferTarget2 = (bufferPos + offsetFloor + 1) % BUFFER_SIZE;
+    return lerp(buffer[bufferTarget1], buffer[bufferTarget2], bufferOffset - offsetFloor);
+  }
+}
+
+public static class Rings extends EnvelopPattern {
+  
+  public final CompoundParameter amplitude =
+    new CompoundParameter("Amplitude", 1);
+    
+  public final CompoundParameter speed = (CompoundParameter)
+    new CompoundParameter("Speed", 10000, 20000, 1000)
+    .setExponent(.25);
+  
+  public Rings(LX lx) {
+    super(lx);
+    for (int i = 0; i < 2; ++i) {
+      addLayer(new Ring(lx));
+    }
+    addParameter("amplitude", this.amplitude);
+    addParameter("speed", this.speed);
+  }
+  
+  public void run(double deltaMs) {
+    setColors(#000000);
+  }
+  
+  class Ring extends LXLayer {
+    
+    private LXProjection proj = new LXProjection(model);
+    private final SawLFO yRot = new SawLFO(0, TWO_PI, 9000 + 2000 * Math.random());
+    private final SinLFO zRot = new SinLFO(-1, 1, speed);
+    private final SinLFO zAmp = new SinLFO(PI / 10, PI/4, 13000 + 3000 * Math.random());
+    private final SinLFO yOffset = new SinLFO(-2*FEET, 2*FEET, 12000 + 5000*Math.random());
+    
+    public Ring(LX lx) {
+      super(lx);
+      startModulator(yRot.randomBasis());
+      startModulator(zRot.randomBasis());
+      startModulator(zAmp.randomBasis());
+      startModulator(yOffset.randomBasis());
+    }
+    
+    public void run(double deltaMs) {
+      proj.reset().center().rotateY(yRot.getValuef()).rotateZ(amplitude.getValuef() * zAmp.getValuef() * zRot.getValuef());
+      float yOffset = this.yOffset.getValuef();
+      float falloff = 100 / (2*FEET);
+      for (LXVector v : proj) {
+        float b = 100 - falloff * abs(v.y - yOffset);  
+        if (b > 0) {
+          addColor(v.index, palette.getColor(v.point, b));
+        }
+      }
+    }
+  }
+}
+
+public static final class Swarm extends EnvelopPattern {
+  
+  public final CompoundParameter chunkSize = new CompoundParameter("Chunk", 10, 5, 20); 
+    
+  private final SawLFO pos1 = new SawLFO(0, 1, startModulator(
+    new SinLFO(500, 1000, startModulator(
+      new SinLFO(9000, 23000, 49000).randomBasis()
+  )).randomBasis()));
+  
+  private final SinLFO swarmA = new SinLFO(0, 4*PI, startModulator(
+    new SinLFO(37000, 79000, 51000)
+  ));
+  
+  private final SinLFO swarmY = new SinLFO(
+    startModulator(new SinLFO(model.yMin, model.cy, 19000).randomBasis()),
+    startModulator(new SinLFO(model.cy, model.yMax, 23000).randomBasis()),
+    startModulator(new SinLFO(14000, 37000, 19000))
+  );
+  
+  private final SinLFO swarmSize = new SinLFO(.6, 1, startModulator(
+    new SinLFO(7000, 19000, 11000)
+  ));
+  
+  public final CompoundParameter size = new CompoundParameter("Size", 1, 2, .5); 
+  
+  public Swarm(LX lx) {
+    super(lx);
+    addParameter("Chunk", chunkSize);
+    addParameter("Size", size);
+    startModulator(pos1.randomBasis());
+    startModulator(swarmA);
+    startModulator(swarmY);
+    startModulator(swarmSize);
+    setColors(#000000);
+  }
+ 
+  public void run(double deltaMs) {
+    float chunkSize = this.chunkSize.getValuef();
+    float pos1 = this.pos1.getValuef();
+    float swarmA = this.swarmA.getValuef();
+    float swarmY = this.swarmY.getValuef();
+    float swarmSize = this.swarmSize.getValuef() * this.size.getValuef();
+    
+    for (Column column : model.columns) {
+      int ri = 0;
+      for (Rail rail : column.rails) {
+        for (int i = 0; i < rail.points.length; ++i) {
+          LXPoint p = rail.points[i];
+          float f = (i % chunkSize) / chunkSize;
+          float pos = pos1;
+          if ((column.index + ri) % 3 == 2) {
+            f = 1-f;
+          }
+          float fd = 40*LXUtils.wrapdistf(column.azimuth, swarmA, TWO_PI) + abs(p.y - swarmY);
+          fd *= swarmSize;
+          colors[p.index] = palette.getColor(p, max(0, 100 - fd - (100 + fd)*LXUtils.wrapdistf(f, pos, 1)));
+        }
+        ++ri;
+      }
     }
   }
 }

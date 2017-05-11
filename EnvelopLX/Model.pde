@@ -203,15 +203,15 @@ static class Column extends LXModel {
   final static float RADIUS = 20*INCHES;
   
   final int index;
-  final float theta;
+  final float azimuth;
   
   final List<Arc> arcs;
   final List<Rail> rails;
   
-  Column(EnvelopModel.Config config, int index, LXTransform transform, float theta) {
+  Column(EnvelopModel.Config config, int index, LXTransform transform, float azimuth) {
     super(new Fixture(config, transform));
     this.index = index;
-    this.theta = theta;
+    this.azimuth = azimuth;
     Fixture f = (Fixture) fixtures.get(0);
     arcs = Collections.unmodifiableList(Arrays.asList(f.arcs));
     rails = Collections.unmodifiableList(Arrays.asList(f.rails));
