@@ -648,11 +648,10 @@ public class Noise extends LXPattern {
     private int equalCount = 0;
     
     void accum(double deltaMs, float speed) {
-      if (speed > 0) {
+      if (speed != 0) {
         float newAccum = (float) (this.accum + deltaMs * speed * 0.00025);
         if (newAccum == this.accum) {
           if (++this.equalCount >= 5) {
-            println("Reset accum!");
             this.equalCount = 0;
             newAccum = 0;
           }

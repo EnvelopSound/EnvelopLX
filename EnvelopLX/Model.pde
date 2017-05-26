@@ -70,7 +70,7 @@ static abstract class EnvelopModel extends LXModel {
         transform.push();
         transform.translate(pv.x, 0, pv.y);
         float theta = atan2(pv.y, pv.x) - HALF_PI;
-        transform.rotateY(theta);
+        transform.rotateY(-theta);
         addPoints(columns[ci] = new Column(config, ci, transform, theta));
         transform.pop();
         ++ci;
@@ -293,12 +293,12 @@ static class Arc extends LXModel {
   private static class Fixture extends LXAbstractFixture {
     Fixture(LXTransform transform) {
       transform.push();
-      transform.rotateY(POINT_ANGLE / 2.);
+      transform.rotateY(-POINT_ANGLE / 2.);
       for (int i = 0; i < NUM_POINTS; ++i) {
         transform.translate(-RADIUS, 0, 0);
         addPoint(new LXPoint(transform));
         transform.translate(RADIUS, 0, 0);
-        transform.rotateY(POINT_ANGLE);
+        transform.rotateY(-POINT_ANGLE);
       }
       transform.pop();
     }

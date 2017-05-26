@@ -101,8 +101,8 @@ class UIMidway extends UIVenue {
 }
 
 class UIEnvelopSource extends UICollapsibleSection {
-  UIEnvelopSource(UI ui, float x, float y, float w) {
-    super(ui, x, y, w, 124);
+  UIEnvelopSource(UI ui, float w) {
+    super(ui, 0, 0, w, 124);
     setTitle("ENVELOP SOURCE");
     new UIEnvelopMeter(ui, envelop.source, 0, 0, getContentWidth(), 60).addToContainer(this);    
     UIAudio.addGainAndRange(this, 64, envelop.source.gain, envelop.source.range);
@@ -111,8 +111,8 @@ class UIEnvelopSource extends UICollapsibleSection {
 }
 
 class UIEnvelopDecode extends UICollapsibleSection {
-  UIEnvelopDecode(UI ui, float x, float y, float w) {
-    super(ui, x, y, w, 124);
+  UIEnvelopDecode(UI ui, float w) {
+    super(ui, 0, 0, w, 124);
     setTitle("ENVELOP DECODE");
     new UIEnvelopMeter(ui, envelop.decode, 0, 0, getContentWidth(), 60).addToContainer(this);
     UIAudio.addGainAndRange(this, 64, envelop.decode.gain, envelop.decode.range);

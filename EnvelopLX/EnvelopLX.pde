@@ -16,7 +16,7 @@ enum Environment {
 }
 
 // Change this line if you want a different configuration!
-Environment environment = Environment.SATELLITE;  
+Environment environment = Environment.MIDWAY;  
 LXStudio lx;
 Envelop envelop;
 EnvelopModel venue;
@@ -27,6 +27,7 @@ void setup() {
   size(1280, 960, P3D);
 
   venue = getModel();
+  try {
   lx = new LXStudio(this, venue) {
     @Override
     protected void initialize(LXStudio lx, LXStudio.UI ui) {
@@ -76,10 +77,13 @@ void setup() {
       ui.preview.addComponent(getUIVenue());
       ui.preview.addComponent(new UISoundObjects());
       ui.preview.setPhi(PI/32).setMinRadius(2*FEET).setMaxRadius(48*FEET);
-      new UIEnvelopSource(ui, 0, 0, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 2);
-      new UIEnvelopDecode(ui, 0, 0, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 3);
+      new UIEnvelopSource(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 2);
+      new UIEnvelopDecode(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 3);
     }
   };
+  } catch (Exception x) {
+    x.printStackTrace();
+  }
   
   long setupFinish = System.nanoTime();
   println("Total initialization time: " + ((setupFinish - setupStart) / 1000000) + "ms"); 
