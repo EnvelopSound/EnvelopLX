@@ -1,5 +1,36 @@
 import java.awt.Color;
 
+public class Sizzle extends LXEffect {
+  
+  public final CompoundParameter amount = new CompoundParameter("Amount", .5)
+    .setDescription("Intensity of the effect");
+    
+  public final CompoundParameter speed = new CompoundParameter("Speed", .5)
+    .setDescription("Speed of the effect");
+  
+  private final int[] buffer = new ModelBuffer(lx).getArray();
+  
+  private float base = 0;
+  
+  public Sizzle(LX lx) {
+    super(lx);
+    addParameter("amount", this.amount);
+    addParameter("speed", this.speed);
+  }
+  
+  public void run(double deltaMs, double amount) {
+      double amt = amount * this.amount.getValue();
+    if (amt > 0) {
+      base += deltaMs * .01 * speed.getValuef();
+      for (int i = 0; i < this.buffer.length; ++i) {
+        int val = (int) min(0xff, 500 * noise(i, base));
+        this.buffer[i] = 0xff000000 | val | (val << 8) | (val << 16);
+      }
+      MultiplyBlend.multiply(this.colors, this.buffer, amt, this.colors);
+    }
+  }
+}
+
 public static class Strobe extends LXEffect {
   
   public enum Waveshape {
@@ -15,6 +46,10 @@ public static class Strobe extends LXEffect {
   public final CompoundParameter frequency = (CompoundParameter)
     new CompoundParameter("Freq", 1, .05, 10).setUnits(LXParameter.Units.HERTZ);  
   
+  public final CompoundParameter depth = (CompoundParameter)
+    new CompoundParameter("Depth", 0.5)
+    .setDescription("Depth of the strobe effect");
+    
   private final SawLFO basis = new SawLFO(1, 0, new FunctionalParameter() {
     public double getValue() {
       return 1000 / frequency.getValue();
@@ -22,8 +57,9 @@ public static class Strobe extends LXEffect {
         
   public Strobe(LX lx) {
     super(lx);
-    addParameter(mode);
-    addParameter(frequency);
+    addParameter("mode", this.mode);
+    addParameter("frequency", this.frequency);
+    addParameter("depth", this.depth);
     startModulator(basis);
   }
   
@@ -47,7 +83,7 @@ public static class Strobe extends LXEffect {
   
   @Override
   public void run(double deltaMs, double amount) {
-    float amt = this.enabledDamped.getValuef();
+    float amt = this.enabledDamped.getValuef() * this.depth.getValuef();
     if (amt > 0) {
       float strobef = basis.getValuef();
       strobef = (float) getWaveshape().compute(strobef);

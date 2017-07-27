@@ -37,6 +37,7 @@ static abstract class EnvelopModel extends LXModel {
   public final List<Column> columns;
   public final List<Arc> arcs;
   public final List<Rail> rails;
+  public final List<LXPoint> railPoints;
   
   protected EnvelopModel(Config config) {
     super(new Fixture(config));
@@ -44,6 +45,7 @@ static abstract class EnvelopModel extends LXModel {
     columns = Collections.unmodifiableList(Arrays.asList(f.columns));
     final Arc[] arcs = new Arc[columns.size() * config.getArcs().length];
     final Rail[] rails = new Rail[columns.size() * config.getRails().length];
+    final List<LXPoint> railPoints = new ArrayList<LXPoint>();
     int a = 0;
     int r = 0;
     for (Column column : columns) {
@@ -52,10 +54,14 @@ static abstract class EnvelopModel extends LXModel {
       }
       for (Rail rail : column.rails) {
         rails[r++] = rail;
+        for (LXPoint p : rail.points) {
+          railPoints.add(p);
+        }
       }
     }
     this.arcs = Collections.unmodifiableList(Arrays.asList(arcs));
     this.rails = Collections.unmodifiableList(Arrays.asList(rails));
+    this.railPoints = Collections.unmodifiableList(railPoints);
   }
   
   private static class Fixture extends LXAbstractFixture {

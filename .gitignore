@@ -1,4 +1,5 @@
 .DS_Store
+.lxproject
 applet
 application.linux32
 application.linux64
