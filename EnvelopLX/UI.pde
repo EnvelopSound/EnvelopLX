@@ -8,9 +8,16 @@ UI3dComponent getUIVenue() {
 
 abstract class UIVenue extends UI3dComponent {
 
+  final static float BOOTH_SIZE_X = 6*FEET;
+  final static float BOOTH_SIZE_Y = 40*INCHES;
+  final static float BOOTH_SIZE_Z = 36*INCHES;
+
   final static float LOGO_SIZE = 100*INCHES;
   final PImage LOGO = loadImage("envelop-logo-clear.png");
-
+  final static float SPEAKER_SIZE_X = 21*INCHES;
+  final static float SPEAKER_SIZE_Y = 16*INCHES;
+  final static float SPEAKER_SIZE_Z = 15*INCHES;
+  
   @Override
   public void onDraw(UI ui, PGraphics pg) {
     pg.stroke(#000000);
@@ -37,13 +44,13 @@ abstract class UIVenue extends UI3dComponent {
       pg.rotateY(-column.azimuth);
       pg.translate(0, 9*INCHES, 0);
       pg.rotateX(Column.SPEAKER_ANGLE);
-      pg.box(21*INCHES, 16*INCHES, 15*INCHES);
+      pg.box(SPEAKER_SIZE_X, SPEAKER_SIZE_Y, SPEAKER_SIZE_Z);
       pg.rotateX(-Column.SPEAKER_ANGLE);
       pg.translate(0, 6*FEET-9*INCHES, 0);
-      pg.box(21*INCHES, 16*INCHES, 15*INCHES);
+      pg.box(SPEAKER_SIZE_X, SPEAKER_SIZE_Y, SPEAKER_SIZE_Z);
       pg.translate(0, 11*FEET + 3*INCHES - 6*FEET, 0);
       pg.rotateX(-Column.SPEAKER_ANGLE);
-      pg.box(21*INCHES, 16*INCHES, 15*INCHES);
+      pg.box(SPEAKER_SIZE_X, SPEAKER_SIZE_Y, SPEAKER_SIZE_Z);
       pg.rotateX(Column.SPEAKER_ANGLE);
       pg.rotateY(column.azimuth);
       pg.translate(-column.cx, -11*FEET - 3*INCHES, -column.cz);
@@ -55,6 +62,12 @@ abstract class UIVenue extends UI3dComponent {
 
 class UISatellite extends UIVenue {
   public void drawFloor(UI ui, PGraphics pg) {
+    
+    // Desk
+    pg.translate(0, BOOTH_SIZE_Y/2, Satellite.INCIRCLE_RADIUS + BOOTH_SIZE_Z/2);
+    pg.box(BOOTH_SIZE_X, BOOTH_SIZE_Y, BOOTH_SIZE_Z);
+    pg.translate(0, -BOOTH_SIZE_Y/2, -Satellite.INCIRCLE_RADIUS - BOOTH_SIZE_Z/2);
+    
     pg.beginShape();
     for (PVector v : Satellite.PLATFORM_POSITIONS) {
       pg.vertex(v.x, 0, v.y);
@@ -71,15 +84,15 @@ class UISatellite extends UIVenue {
 }
   
 class UIMidway extends UIVenue {
-    
+      
   @Override
   public void onDraw(UI ui, PGraphics pg) {
     super.onDraw(ui, pg);
     
     // Desk
-    pg.translate(0, 20*INCHES, -Midway.DEPTH/2 + 18*INCHES);
-    pg.box(6*FEET, 40*INCHES, 36*INCHES);
-    pg.translate(0, -20*INCHES, Midway.DEPTH/2 - 18*INCHES);
+    pg.translate(0, BOOTH_SIZE_Y/2, Midway.DEPTH/2 - BOOTH_SIZE_Z/2);
+    pg.box(BOOTH_SIZE_X, BOOTH_SIZE_Y, BOOTH_SIZE_Z);
+    pg.translate(0, -BOOTH_SIZE_Y/2, -Midway.DEPTH/2 + BOOTH_SIZE_Z/2);
     
     // Subwoofers
     for (PVector pv : Midway.SUB_POSITIONS) {

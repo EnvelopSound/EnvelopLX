@@ -123,21 +123,21 @@ static class Midway extends EnvelopModel {
   final static float[] ARC_POSITIONS = { 1/3.f, 2/3.f };
   
   final static PVector[] COLUMN_POSITIONS = {
-    new PVector(-OUTER_OFFSET_X, -OUTER_OFFSET_Z, 101),
-    new PVector(-INNER_OFFSET_X, -INNER_OFFSET_Z, 102),
-    new PVector(-INNER_OFFSET_X,  INNER_OFFSET_Z, 103),
-    new PVector(-OUTER_OFFSET_X,  OUTER_OFFSET_Z, 104),
-    new PVector( OUTER_OFFSET_X,  OUTER_OFFSET_Z, 105),
-    new PVector( INNER_OFFSET_X,  INNER_OFFSET_Z, 106),
-    new PVector( INNER_OFFSET_X, -INNER_OFFSET_Z, 107),
-    new PVector( OUTER_OFFSET_X, -OUTER_OFFSET_Z, 108)
+    new PVector(OUTER_OFFSET_X,   OUTER_OFFSET_Z, 101),
+    new PVector(INNER_OFFSET_X,   INNER_OFFSET_Z, 102),
+    new PVector(INNER_OFFSET_X,  -INNER_OFFSET_Z, 103),
+    new PVector(OUTER_OFFSET_X,  -OUTER_OFFSET_Z, 104),
+    new PVector(-OUTER_OFFSET_X, -OUTER_OFFSET_Z, 105),
+    new PVector(-INNER_OFFSET_X, -INNER_OFFSET_Z, 106),
+    new PVector(-INNER_OFFSET_X,  INNER_OFFSET_Z, 107),
+    new PVector(-OUTER_OFFSET_X,  OUTER_OFFSET_Z, 108)
   };
     
   final static PVector[] SUB_POSITIONS = {
-    COLUMN_POSITIONS[0].copy().add(-SUB_OFFSET_X, -SUB_OFFSET_Z),
-    COLUMN_POSITIONS[3].copy().add(-SUB_OFFSET_X, SUB_OFFSET_Z),
-    COLUMN_POSITIONS[4].copy().add(SUB_OFFSET_X, SUB_OFFSET_Z),
-    COLUMN_POSITIONS[7].copy().add(SUB_OFFSET_X, -SUB_OFFSET_Z),
+    COLUMN_POSITIONS[0].copy().add(SUB_OFFSET_X, SUB_OFFSET_Z),
+    COLUMN_POSITIONS[3].copy().add(SUB_OFFSET_X, -SUB_OFFSET_Z),
+    COLUMN_POSITIONS[4].copy().add(-SUB_OFFSET_X, -SUB_OFFSET_Z),
+    COLUMN_POSITIONS[7].copy().add(-SUB_OFFSET_X, SUB_OFFSET_Z),
   };
   
   Midway() {
@@ -152,14 +152,14 @@ static class Satellite extends EnvelopModel {
   final static float INCIRCLE_RADIUS = HALF_EDGE_LENGTH + EDGE_LENGTH / sqrt(2);
   
   final static PVector[] PLATFORM_POSITIONS = {
-    new PVector(-HALF_EDGE_LENGTH,  INCIRCLE_RADIUS, 101),
-    new PVector(-INCIRCLE_RADIUS,  HALF_EDGE_LENGTH, 102),
-    new PVector(-INCIRCLE_RADIUS, -HALF_EDGE_LENGTH, 103),
-    new PVector(-HALF_EDGE_LENGTH, -INCIRCLE_RADIUS, 104),
-    new PVector( HALF_EDGE_LENGTH, -INCIRCLE_RADIUS, 105),
-    new PVector( INCIRCLE_RADIUS, -HALF_EDGE_LENGTH, 106),
-    new PVector( INCIRCLE_RADIUS,  HALF_EDGE_LENGTH, 107),
-    new PVector( HALF_EDGE_LENGTH,  INCIRCLE_RADIUS, 108)
+    new PVector( HALF_EDGE_LENGTH, -INCIRCLE_RADIUS,  101),
+    new PVector( INCIRCLE_RADIUS,  -HALF_EDGE_LENGTH, 102),
+    new PVector( INCIRCLE_RADIUS,   HALF_EDGE_LENGTH, 103),
+    new PVector( HALF_EDGE_LENGTH,  INCIRCLE_RADIUS,  104),
+    new PVector(-HALF_EDGE_LENGTH,  INCIRCLE_RADIUS,  105),
+    new PVector(-INCIRCLE_RADIUS,   HALF_EDGE_LENGTH, 106),
+    new PVector(-INCIRCLE_RADIUS,  -HALF_EDGE_LENGTH, 107),
+    new PVector(-HALF_EDGE_LENGTH, -INCIRCLE_RADIUS,  108)
   };
   
   final static PVector[] COLUMN_POSITIONS;
