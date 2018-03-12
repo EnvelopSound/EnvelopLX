@@ -213,14 +213,22 @@ static class Column extends LXModel {
   
   final List<Arc> arcs;
   final List<Rail> rails;
+  final List<LXPoint> railPoints;
   
   Column(EnvelopModel.Config config, int index, LXTransform transform, float azimuth) {
     super(new Fixture(config, transform));
     this.index = index;
     this.azimuth = azimuth;
     Fixture f = (Fixture) fixtures.get(0);
-    arcs = Collections.unmodifiableList(Arrays.asList(f.arcs));
-    rails = Collections.unmodifiableList(Arrays.asList(f.rails));
+    this.arcs = Collections.unmodifiableList(Arrays.asList(f.arcs));
+    this.rails = Collections.unmodifiableList(Arrays.asList(f.rails));
+    List<LXPoint> railPoints = new ArrayList<LXPoint>();
+    for (Rail rail : this.rails) {
+      for (LXPoint p : rail.points) {
+        railPoints.add(p);
+      }
+    }
+    this.railPoints = Collections.unmodifiableList(railPoints); 
   }
   
   private static class Fixture extends LXAbstractFixture {

@@ -25,68 +25,58 @@ void setup() {
   long setupStart = System.nanoTime();
   // LX.logInitTiming();
   size(1280, 960, P3D);
-
   venue = getModel();
   try {
-  lx = new LXStudio(this, venue) {
-    @Override
-    protected void initialize(LXStudio lx, LXStudio.UI ui) {
-      envelop = new Envelop(lx);
-      lx.engine.registerComponent("envelop", envelop);
-      lx.engine.addLoopTask(envelop);
-              
-      // Output drivers
-      try {
-        lx.engine.output.gammaCorrection.setValue(1);
-        lx.engine.output.enabled.setValue(false);
-        lx.addOutput(getOutput(lx));
-      } catch (Exception x) {
-        throw new RuntimeException(x);
-      }
-        
-      // OSC drivers
-      try {
-        lx.engine.osc.receiver(3344).addListener(new EnvelopOscControlListener(lx));
-        lx.engine.osc.receiver(3355).addListener(new EnvelopOscSourceListener());
-        lx.engine.osc.receiver(3366).addListener(new EnvelopOscMeterListener());
-      } catch (SocketException sx) {
-        throw new RuntimeException(sx);
-      }
-        
-      lx.registerPatterns(new Class[]{
-        JavascriptPattern.class,
-        heronarts.p3lx.pattern.SolidColorPattern.class,
-        IteratorTestPattern.class
-      });
-      lx.registerEffects(new Class[]{
-        FlashEffect.class,
-        BlurEffect.class,
-        DesaturationEffect.class
-      });
-    
-      ui.theme.setPrimaryColor(#008ba0);
-      ui.theme.setSecondaryColor(#00a08b);
-      ui.theme.setAttentionColor(#a00044);
-      ui.theme.setFocusColor(#0094aa);
-      ui.theme.setSurfaceColor(#cc3300);
-    }
-    
-    @Override
-    protected void onUIReady(LXStudio lx, LXStudio.UI ui) {
-      ui.leftPane.audio.setVisible(false);
-      ui.preview.addComponent(getUIVenue());
-      ui.preview.addComponent(new UISoundObjects());
-      ui.preview.setPhi(PI/32).setMinRadius(2*FEET).setMaxRadius(48*FEET);
-      new UIEnvelopSource(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 2);
-      new UIEnvelopDecode(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 3);
-    }
-  };
+    lx = new LXStudio(this, venue);
   } catch (Exception x) {
     x.printStackTrace();
+    throw x;
   }
   
   long setupFinish = System.nanoTime();
   println("Total initialization time: " + ((setupFinish - setupStart) / 1000000) + "ms"); 
+
+}
+
+public void initialize(LXStudio lx, LXStudio.UI ui) {
+  envelop = new Envelop(lx);
+  lx.engine.registerComponent("envelop", envelop);
+  lx.engine.addLoopTask(envelop);
+          
+  // Output drivers
+  try {
+    lx.engine.output.gammaCorrection.setValue(1);
+    lx.engine.output.enabled.setValue(false);
+    lx.addOutput(getOutput(lx));
+  } catch (Exception x) {
+    throw new RuntimeException(x);
+  }
+    
+  // OSC drivers
+  try {
+    lx.engine.osc.receiver(3344).addListener(new EnvelopOscControlListener(lx));
+    lx.engine.osc.receiver(3355).addListener(new EnvelopOscSourceListener());
+    lx.engine.osc.receiver(3366).addListener(new EnvelopOscMeterListener());
+    lx.engine.osc.receiver(3377).addListener(new EnvelopOscListener());
+  } catch (SocketException sx) {
+    throw new RuntimeException(sx);
+  }
+
+  ui.theme.setPrimaryColor(#008ba0);
+  ui.theme.setSecondaryColor(#00a08b);
+  ui.theme.setAttentionColor(#a00044);
+  ui.theme.setFocusColor(#0094aa);
+  ui.theme.setSurfaceColor(#cc3300);
+  
+}
+    
+public void onUIReady(LXStudio lx, LXStudio.UI ui) {
+  ui.leftPane.audio.setVisible(false);
+  ui.preview.addComponent(getUIVenue());
+  ui.preview.addComponent(new UISoundObjects());
+  ui.preview.setPhi(PI/32).setMinRadius(2*FEET).setMaxRadius(48*FEET);
+  new UIEnvelopSource(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 2);
+  new UIEnvelopDecode(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 3);
 }
 
 void draw() {
@@ -176,11 +166,17 @@ static class Envelop extends LXRunnableComponent {
       }
     }
     
+    public void setLevel(int index, OscMessage message) {
+      double gainValue = this.gain.getValue();
+      double rangeValue = this.range.getValue();
+      this.targets[index] = constrain((float) (1 + (message.getFloat() + gainValue) / rangeValue), 0, 1);
+    }
+    
     public void setLevels(OscMessage message) {
       double gainValue = this.gain.getValue();
       double rangeValue = this.range.getValue();
       for (int i = 0; i < this.targets.length; ++i) {
-        targets[i] = constrain((float) (1 + (message.getFloat() + gainValue) / rangeValue), 0, 1);
+        this.targets[i] = constrain((float) (1 + (message.getFloat() + gainValue) / rangeValue), 0, 1);
       }
     }
     
@@ -215,7 +211,7 @@ static class Envelop extends LXRunnableComponent {
         addParameter(channels[i] = new Channel(i));
       }
     }
-    
+        
     public NormalizedParameter[] getChannels() {
       return this.channels;
     }

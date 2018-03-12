@@ -1,5 +1,6 @@
 import java.awt.Color;
 
+@LXCategory("Texture")
 public class Sizzle extends LXEffect {
   
   public final CompoundParameter amount = new CompoundParameter("Amount", .5)
@@ -31,6 +32,7 @@ public class Sizzle extends LXEffect {
   }
 }
 
+@LXCategory("Form")
 public static class Strobe extends LXEffect {
   
   public enum Waveshape {
@@ -105,6 +107,7 @@ public static class Strobe extends LXEffect {
   }
 }
 
+@LXCategory("Color")
 public class LSD extends LXEffect {
   
   public final BoundedParameter scale = new BoundedParameter("Scale", 10, 5, 40);
@@ -147,6 +150,21 @@ public class LSD extends LXEffect {
         colors[p.index] = LXColor.lerp(colors[p.index], c2, amount);
       } else {
         colors[p.index] = c2;
+      }
+    }
+  }
+}
+
+public class ArcsOff extends LXEffect {
+  public ArcsOff(LX lx) {
+    super(lx);
+  }
+  
+  @Override
+  public void run(double deltaMs, double amount) {
+    if (amount > 0) {
+      for (Arc arc : venue.arcs) {
+        setColor(arc, #000000);
       }
     }
   }

@@ -1,34 +1,14 @@
 import heronarts.lx.modulator.*;
-import heronarts.p3lx.ui.studio.device.*;
 import java.util.Stack;
 
-public static abstract class EnvelopPattern extends LXPattern {
-  
-  protected final EnvelopModel model;
+public static abstract class EnvelopPattern extends LXModelPattern<EnvelopModel> {
   
   protected EnvelopPattern(LX lx) {
     super(lx);
-    this.model = (EnvelopModel) lx.model;
   }
 }
 
-public static class Palette extends LXPattern {
-  
-  public final CompoundParameter level = new CompoundParameter("Level", 100, 0, 100); 
-  
-  public Palette(LX lx) {
-    super(lx);
-    addParameter("level", this.level);
-  }
-  
-  public void run(double deltaMs) {
-    double level = this.level.getValue();
-    for (LXPoint p : model.points) {
-      colors[p.index] = palette.getColor(p, level);
-    }
-  }
-}
-
+@LXCategory("MIDI")
 public class NotePattern extends EnvelopPattern {
   
   private final CompoundParameter attack = (CompoundParameter)
@@ -143,7 +123,7 @@ public class NotePattern extends EnvelopPattern {
           for (LXPoint p : rail.points) {
             float b = l2 - falloff * abs(p.yn - yn);
             if (b > 0) {
-              addColor(p.index, palette.getColor(p, b));
+              addColor(p.index, LXColor.gray(b));
             }
           }
         }
@@ -202,6 +182,7 @@ public static abstract class RotationPattern extends EnvelopPattern {
   }
 }
 
+@LXCategory("Form")
 public static class Helix extends RotationPattern {
     
   private final CompoundParameter size = (CompoundParameter)
@@ -236,12 +217,13 @@ public static class Helix extends RotationPattern {
         float d1 = 100 - falloff*abs(p.y - yp);
         float d2 = 100 - falloff*abs(p.y - yp2);
         float b = max(d1, d2);
-        colors[p.index] = b > 0 ? palette.getColor(p, b) : #000000;
+        colors[p.index] = b > 0 ? LXColor.gray(b) : #000000;
       }
     }
   }
 }
 
+@LXCategory("Form")
 public static class Warble extends RotationPattern {
   
   private final CompoundParameter size = (CompoundParameter)
@@ -282,7 +264,7 @@ public static class Warble extends RotationPattern {
       float y2 = model.yRange * depth * sin(phaseV + (mult+1) * rail.theta);
       float yo = lerp(y1, y2, lerp);
       for (LXPoint p : rail.points) {
-        colors[p.index] = palette.getColor(p, max(0, 100 - falloff*abs(p.y - model.cy - yo)));
+        colors[p.index] = LXColor.gray(max(0, 100 - falloff*abs(p.y - model.cy - yo)));
       }
     }
   }
@@ -306,22 +288,47 @@ public static class Test extends LXPattern {
   }
 }
 
-public static class Raindrops extends EnvelopPattern implements UIPattern {
+@LXCategory("Form")
+public static class Raindrops extends EnvelopPattern {
+  
+  private static final float MAX_VEL = -180;
   
   private final Stack<Drop> availableDrops = new Stack<Drop>();
-
-  public final BooleanParameter auto =
-    new BooleanParameter("Auto", false)
-    .setDescription("Whether drops automatically fall");
+  
+  public final CompoundParameter velocity = (CompoundParameter)
+    new CompoundParameter("Velocity", 0, MAX_VEL)
+    .setDescription("Initial velocity of drops");
+    
+  public final CompoundParameter randomVelocity = 
+    new CompoundParameter("Rnd>Vel", 0, MAX_VEL)
+    .setDescription("How much to randomize initial velocity of drops");
   
   public final CompoundParameter gravity = (CompoundParameter)
     new CompoundParameter("Gravity", -386, -1, -500)
     .setExponent(3)
     .setDescription("Gravity rate for drops to fall");
   
-  public final CompoundParameter size =
+  public final CompoundParameter size = (CompoundParameter)
     new CompoundParameter("Size", 4*INCHES, 1*INCHES, 48*INCHES)
+    .setExponent(2)
     .setDescription("Size of the raindrops");
+    
+  public final CompoundParameter randomSize = (CompoundParameter)
+    new CompoundParameter("Rnd>Sz", 1*INCHES, 0, 48*INCHES)
+    .setExponent(2)
+    .setDescription("Amount of size randomization");    
+  
+  public final CompoundParameter negative =
+    new CompoundParameter("Negative", 0)
+    .setDescription("Whether drops are light or dark");
+  
+  public final BooleanParameter reverse =
+    new BooleanParameter("Reverse", false)
+    .setDescription("Whether drops fall from the ground to the sky");
+  
+  public final BooleanParameter auto =
+    new BooleanParameter("Auto", false)
+    .setDescription("Whether drops automatically fall");  
   
   public final CompoundParameter rate =
     new CompoundParameter("Rate", .5, 30)
@@ -335,10 +342,15 @@ public static class Raindrops extends EnvelopPattern implements UIPattern {
 
   public Raindrops(LX lx) {
     super(lx);
-    addParameter("auto", auto);
-    addParameter("gravity", gravity);
-    addParameter("size", size);
-    addParameter("rate", rate);
+    addParameter("velocity", this.velocity);
+    addParameter("randomVelocity", this.randomVelocity);
+    addParameter("gravity", this.gravity);
+    addParameter("size", this.size);
+    addParameter("randomSize", this.randomSize);
+    addParameter("negative", this.negative);
+    addParameter("auto", this.auto);
+    addParameter("rate", this.rate);
+    addParameter("reverse", this.reverse);
     startModulator(click);
   }
   
@@ -353,7 +365,8 @@ public static class Raindrops extends EnvelopPattern implements UIPattern {
     
   private class Drop extends LXLayer {
         
-    private final Accelerator accel = new Accelerator(model.yMax, 0, gravity);
+    private final Accelerator accel = new Accelerator(model.yMax, velocity, gravity);
+    private float random;
     
     private Rail rail;
     private boolean active = false;
@@ -366,21 +379,26 @@ public static class Raindrops extends EnvelopPattern implements UIPattern {
     void initialize() {
       int railIndex = (int) Math.round(Math.random() * (Raindrops.this.model.rails.size()-1));
       this.rail = Raindrops.this.model.rails.get(railIndex);
+      this.random = (float) Math.random();
       this.accel.reset();
-      this.accel.setValue(model.yMax + size.getValue()).start();
+      this.accel.setVelocity(this.accel.getVelocity() + Math.random() * randomVelocity.getValue());
+      this.accel.setValue(model.yMax + size.getValuef() + this.random * randomSize.getValuef()).start();
       this.active = true;
     }
     
     public void run(double deltaMs) {
       if (this.active) {
-        float falloff = 100 / size.getValuef();
+        float len = size.getValuef() + this.random * randomSize.getValuef();
+        float falloff = 100 / len;
+        float accel = this.accel.getValuef();
+        float pos = reverse.isOn() ? (model.yMin + model.yMax - accel) : accel; 
         for (LXPoint p : this.rail.points) {
-          float b = 100 - falloff * abs(p.y - this.accel.getValuef());
+          float b = 100 - falloff * abs(p.y - pos);
           if (b > 0) {
-            addColor(p.index, palette.getColor(p, b));
+            addColor(p.index, LXColor.gray(b));
           }
         }
-        if (this.accel.getValue() < -size.getValue()) {
+        if (accel < -len) {
           this.active = false;
           availableDrops.push(this);
         }
@@ -400,20 +418,36 @@ public static class Raindrops extends EnvelopPattern implements UIPattern {
     }
   }
   
-  public void buildDeviceUI(UI ui, UIPatternDevice device) {
+  public void afterLayers(double deltaMs) {
+    float neg = this.negative.getValuef();
+    if (neg > 0) {
+      for (LXPoint p : model.railPoints) {
+        colors[p.index] = LXColor.lerp(colors[p.index], LXColor.subtract(#ffffff, colors[p.index]), neg);
+      }
+    }
+  }
+  
+  public void buildDeviceUI(UI ui, UI2dContainer device) {
     device.setLayout(UI2dContainer.Layout.VERTICAL);
     device.setChildMargin(6);
+    new UIKnob(this.velocity).addToContainer(device);
     new UIKnob(this.gravity).addToContainer(device);
     new UIKnob(this.size).addToContainer(device);
-    new UIKnob(this.rate).addToContainer(device);
+    new UIDoubleBox(0, 0, device.getContentWidth(), 16)
+      .setParameter(this.randomVelocity)
+      .addToContainer(device);
     new UIButton(0, 0, device.getContentWidth(), 16)
       .setParameter(this.auto)
       .setLabel("Auto")
       .addToContainer(device);
+    new UIDoubleBox(0, 0, device.getContentWidth(), 16)
+      .setParameter(this.rate)
+      .addToContainer(device);      
   }
 }
 
-public static class Flash extends LXPattern implements UIPattern {
+@LXCategory("MIDI")
+public static class Flash extends LXPattern implements CustomDeviceUI {
   
   private final BooleanParameter manual =
     new BooleanParameter("Trigger")
@@ -505,13 +539,11 @@ public static class Flash extends LXPattern implements UIPattern {
   }
   
   public void run(double deltaMs) {
-    for (LXPoint p : model.points) {
-      colors[p.index] = palette.getColor(p, env.getValue());
-    }
+    setColors(LXColor.gray(env.getValue()));
   }
     
   @Override
-  public void buildDeviceUI(UI ui, UIPatternDevice device) {
+  public void buildDeviceUI(UI ui, UI2dContainer device) {
     device.setContentWidth(216);
     new UIADWave(ui, 0, 0, device.getContentWidth(), 90).addToContainer(device);
     
@@ -598,7 +630,8 @@ public static class Flash extends LXPattern implements UIPattern {
   }
 }
 
-  public class EnvelopDecode extends LXPattern {
+@LXCategory("Envelop")
+public class EnvelopDecode extends EnvelopPattern {
   
   public final CompoundParameter mode = new CompoundParameter("Mode", 0);
   public final CompoundParameter fade = new CompoundParameter("Fade", 1*FEET, 0.001, 6*FEET);
@@ -625,21 +658,23 @@ public static class Flash extends LXPattern implements UIPattern {
     float mode = this.mode.getValuef();
     float faden = fade.getNormalizedf();
     for (Column column : venue.columns) {
-      // float levelf = envelop.decode.channels[column.index].getValuef();
       float levelf = this.dampedDecode[column.index].getValuef();
       float level = levelf * (model.yRange / 2.);
-      for (LXPoint p : column.points) {
-        float yn = abs(p.y - model.cy);
-        float b0 = min(100, falloff * (level - yn));
-        float b1max = lerp(100, 100*levelf, faden);
-        float b1 = (yn > level) ? max(0, b1max - 80*(yn-level)) : lerp(0, b1max, yn / level); 
-        colors[p.index] = palette.getColor(p, lerp(b0, b1, mode));
+      for (Rail rail : column.rails) {
+        for (LXPoint p : rail.points) {
+          float yn = abs(p.y - model.cy);
+          float b0 = constrain(falloff * (level - yn), 0, 100);
+          float b1max = lerp(100, 100*levelf, faden);
+          float b1 = (yn > level) ? max(0, b1max - 80*(yn-level)) : lerp(0, b1max, yn / level); 
+          colors[p.index] = LXColor.gray(lerp(b0, b1, mode));
+        }
       }
     }
   }
 }
 
-public class EnvelopObjects extends LXPattern implements UIPattern {
+@LXCategory("Envelop")
+public class EnvelopObjects extends EnvelopPattern implements CustomDeviceUI {
   
   public final CompoundParameter size = new CompoundParameter("Base", 4*FEET, 0, 24*FEET);
   public final BoundedParameter response = new BoundedParameter("Level", 0, 1*FEET, 24*FEET);
@@ -648,8 +683,8 @@ public class EnvelopObjects extends LXPattern implements UIPattern {
   public EnvelopObjects(LX lx) {
     super(lx);
     addParameter("size", this.size);
-    addParameter("spread", this.spread);
     addParameter("response", this.response);
+    addParameter("spread", this.spread);
     for (Envelop.Source.Channel object : envelop.source.channels) {
       Layer layer = new Layer(lx, object);
       addLayer(layer);
@@ -657,7 +692,7 @@ public class EnvelopObjects extends LXPattern implements UIPattern {
     }
   }
   
-  public void buildDeviceUI(UI ui, UIPatternDevice device) {
+  public void buildDeviceUI(UI ui, UI2dContainer device) {
     int i = 0;
     for (LXLayer layer : getLayers()) {
       new UIButton((i % 4)*33, (i/4)*28, 28, 24)
@@ -675,7 +710,7 @@ public class EnvelopObjects extends LXPattern implements UIPattern {
     device.setContentWidth(3*knobSpacing - 4);
   }
   
-  class Layer extends LXLayer {
+  class Layer extends LXModelLayer<EnvelopModel> {
     
     private final Envelop.Source.Channel object;
     private final BooleanParameter active = new BooleanParameter("Active", true); 
@@ -708,11 +743,11 @@ public class EnvelopObjects extends LXPattern implements UIPattern {
         float z = this.z.getValuef();
         float spreadf = spread.getValuef();
         float falloff = 100 / (size.getValuef() + response.getValuef() * object.getValuef());
-        for (LXPoint p : model.points) {
+        for (LXPoint p : model.railPoints) {
           float dist = dist(p.x * spreadf, p.y, p.z * spreadf, x * spreadf, y, z * spreadf);
           float b = 100 - dist*falloff;
           if (b > 0) {
-            addColor(p.index, palette.getColor(p,  b));
+            addColor(p.index, LXColor.gray(b));
           }
         }
       }
@@ -724,6 +759,7 @@ public class EnvelopObjects extends LXPattern implements UIPattern {
   }
 }
 
+@LXCategory("Form")
 public class Bouncing extends LXPattern {
   
   public CompoundParameter gravity = (CompoundParameter)
@@ -772,7 +808,7 @@ public class Bouncing extends LXPattern {
         for (LXPoint p : rail.points) {
           float b = 100 - falloff * abs(p.y - position.getValuef());
           if (b > 0) {
-            addColor(p.index, palette.getColor(p, b));
+            addColor(p.index, LXColor.gray(b));
           }
         }
       }
@@ -784,10 +820,11 @@ public class Bouncing extends LXPattern {
   }
 }
 
+@LXCategory("Form")
 public class Tron extends LXPattern {
   
   private final static int MIN_DENSITY = 5;
-  private final static int MAX_DENSITY = 60;
+  private final static int MAX_DENSITY = 80;
   
   private CompoundParameter period = (CompoundParameter)
     new CompoundParameter("Speed", 150000, 400000, 50000)
@@ -839,7 +876,7 @@ public class Tron extends LXPattern {
         for (LXPoint p : model.points) {
           float b = maxb - falloff * LXUtils.wrapdistf(p.index, pos, model.points.length);
           if (b > 0) {
-            addColor(p.index, palette.getColor(p, b));
+            addColor(p.index, LXColor.gray(b));
           }
         }
       }
@@ -851,6 +888,7 @@ public class Tron extends LXPattern {
   }
 }
 
+@LXCategory("MIDI")
 public class Blips extends EnvelopPattern {
   
   public final CompoundParameter speed = new CompoundParameter("Speed", 500, 4000, 250); 
@@ -862,7 +900,7 @@ public class Blips extends EnvelopPattern {
     addParameter("speed", this.speed);
   }
   
-  class Blip extends LXLayer {
+  class Blip extends LXModelLayer<EnvelopModel> {
     
     public final LinearEnvelope dist = new LinearEnvelope(0, model.yRange, new FunctionalParameter() {
       public double getValue() {
@@ -896,11 +934,11 @@ public class Blips extends EnvelopPattern {
       float dist = this.dist.getValuef();
       float falloff = 100 / (1*FEET);
       float level = lerp(50, 100, this.velocity);
-      for (LXPoint p : venue.columns.get(this.column).points) {
+      for (LXPoint p : venue.columns.get(this.column).railPoints) {
         float b = level - falloff * abs(abs(p.y - this.yStart) - dist);
         if (b > 0) {
           touched = true;
-          addColor(p.index, palette.getColor(p, b));
+          addColor(p.index, LXColor.gray(b));
         }
       }
       if (!touched) {
@@ -931,6 +969,7 @@ public class Blips extends EnvelopPattern {
   }
 }
 
+@LXCategory("Texture")
 public class Noise extends LXPattern {
   
   public final CompoundParameter scale =
@@ -1032,11 +1071,12 @@ public class Noise extends LXPattern {
     float zo = zOffset.getValuef();
     for (LXPoint p :  model.points) {
       float b = ff + rf * noise(sf*p.x + xo - xAccum.accum, sf*p.y + yo - yAccum.accum, sf*p.z + zo - zAccum.accum);
-      colors[p.index] = palette.getColor(p, constrain(b*100, 0, 100));
+      colors[p.index] = LXColor.gray(constrain(b*100, 0, 100));
     }
   }
 }
 
+@LXCategory("Envelop")
 public class EnvelopShimmer extends EnvelopPattern {
   
   private final int BUFFER_SIZE = 512; 
@@ -1086,7 +1126,7 @@ public class EnvelopShimmer extends EnvelopPattern {
           float normal = getValue(buffer, speed * nd);
           float bufferValue = lerp(threeWay, normal, interp);
           float d = lerp(td, nd, interp);
-          colors[p.index] = palette.getColor(p, max(0, 100 * bufferValue - d*taper));
+          colors[p.index] = LXColor.gray(max(0, 100 * bufferValue - d*taper));
         }
       }      
     }
@@ -1104,6 +1144,7 @@ public class EnvelopShimmer extends EnvelopPattern {
   }
 }
 
+@LXCategory("Form")
 public static class Rings extends EnvelopPattern {
   
   public final CompoundParameter amplitude =
@@ -1149,13 +1190,14 @@ public static class Rings extends EnvelopPattern {
       for (LXVector v : proj) {
         float b = 100 - falloff * abs(v.y - yOffset);  
         if (b > 0) {
-          addColor(v.index, palette.getColor(v.point, b));
+          addColor(v.index, LXColor.gray(b));
         }
       }
     }
   }
 }
 
+@LXCategory("Texture")
 public static final class Swarm extends EnvelopPattern {
   
   private static final double MIN_PERIOD = 200;
@@ -1240,7 +1282,7 @@ public static final class Swarm extends EnvelopPattern {
           }
           float fd = 40*LXUtils.wrapdistf(column.azimuth, swarmA, TWO_PI) + abs(p.y - swarmY);
           fd *= swarmSize;
-          colors[p.index] = palette.getColor(p, max(0, 100 - fd - (100 + fd) * LXUtils.wrapdistf(f, pos, 1)));
+          colors[p.index] = LXColor.gray(max(0, 100 - fd - (100 + fd) * LXUtils.wrapdistf(f, pos, 1)));
         }
         ++ri;
       }
@@ -1248,6 +1290,7 @@ public static final class Swarm extends EnvelopPattern {
   }
 }
 
+@LXCategory("MIDI")
 public class ColumnNotes extends EnvelopPattern {
   
   private final ColumnLayer[] columns = new ColumnLayer[model.columns.size()]; 
@@ -1312,7 +1355,185 @@ public class ColumnNotes extends EnvelopPattern {
     public void run(double deltaMs) {
       float level = this.vibrato.getValuef() * this.envelope.getValuef();
       for (LXPoint p : column.points) {
-        colors[p.index] = palette.getColor(p, level);
+        colors[p.index] = LXColor.gray(level);
+      }
+    }
+  }
+  
+  public void run(double deltaMs) {
+    setColors(#000000);
+  }
+}
+
+@LXCategory(LXCategory.TEXTURE)
+public class Sparkle extends LXPattern {
+  
+  public final SinLFO[] sparkles = new SinLFO[60]; 
+  private final int[] map = new int[model.size];
+  
+  public Sparkle(LX lx) {
+    super(lx);
+    for (int i = 0; i < this.sparkles.length; ++i) {
+      this.sparkles[i] = (SinLFO) startModulator(new SinLFO(0, random(50, 120), random(2000, 7000)));
+    }
+    for (int i = 0; i < model.size; ++i) {
+      this.map[i] = (int) constrain(random(0, sparkles.length), 0, sparkles.length-1);
+    }
+  }
+  
+  public void run(double deltaMs) {
+    for (LXPoint p : model.points) {
+      colors[p.index] = LXColor.gray(constrain(this.sparkles[this.map[p.index]].getValuef(), 0, 100));
+    }
+  }
+}
+
+@LXCategory(LXCategory.TEXTURE)
+public class Starlight extends LXPattern {
+  
+  public final CompoundParameter speed = new CompoundParameter("Speed", 1, 2, .5);
+  public final CompoundParameter base = new CompoundParameter("Base", -10, -20, 100);
+  
+  public final LXModulator[] brt = new LXModulator[50];
+  private final int[] map1 = new int[model.size];
+  private final int[] map2 = new int[model.size];
+  
+  public Starlight(LX lx) {
+    super(lx);
+    for (int i = 0; i < this.brt.length; ++i) {
+      this.brt[i] = startModulator(new SinLFO(this.base, random(50, 120), new FunctionalParameter() {
+        private final float rand = random(1000, 5000);
+        public double getValue() {
+          return rand * speed.getValuef();
+        }
+      }).randomBasis());
+    }
+    for (int i = 0; i < model.size; ++i) {
+      this.map1[i] = (int) constrain(random(0, this.brt.length), 0, this.brt.length-1);
+      this.map2[i] = (int) constrain(random(0, this.brt.length), 0, this.brt.length-1);
+    }
+    addParameter("speed", this.speed);
+    addParameter("base", this.base);
+  }
+  
+  public void run(double deltaMs) {
+    for (LXPoint p : model.points) {
+      int i = p.index;
+      float brt = this.brt[this.map1[i]].getValuef() + this.brt[this.map2[i]].getValuef(); 
+      colors[i] = LXColor.gray(constrain(.5*brt, 0, 100));
+    }
+  }
+}
+
+@LXCategory(LXCategory.TEXTURE)
+public class Jitters extends LXModelPattern<EnvelopModel> {
+  
+  public final CompoundParameter period = (CompoundParameter)
+    new CompoundParameter("Period", 200, 2000, 50)
+    .setExponent(.5)
+    .setDescription("Speed of the motion");
+    
+  public final CompoundParameter size =
+    new CompoundParameter("Size", 8, 3, 20)
+    .setDescription("Size of the movers");
+    
+  public final CompoundParameter contrast =
+    new CompoundParameter("Contrast", 100, 50, 300)
+    .setDescription("Amount of contrast");    
+  
+  final LXModulator pos = startModulator(new SawLFO(0, 1, period));
+  
+  final LXModulator sizeDamped = startModulator(new DampedParameter(size, 30));
+  
+  public Jitters(LX lx) {
+    super(lx);
+    addParameter("period", this.period);
+    addParameter("size", this.size);
+    addParameter("contrast", this.contrast);
+  }
+  
+  public void run(double deltaMs) {
+    float size = this.sizeDamped.getValuef();
+    float pos = this.pos.getValuef();
+    float sizeInv = 1 / size;
+    float contrast = this.contrast.getValuef();
+    boolean inv = false;
+    for (Rail rail : model.rails) {
+      inv = !inv;
+      float pv = inv ? pos : (1-pos);
+      int i = 0;
+      for (LXPoint p : rail.points) {
+        float pd = (i % size) * sizeInv;
+        colors[p.index] = LXColor.gray(max(0, 100 - contrast * LXUtils.wrapdistf(pd, pv, 1)));
+        ++i;
+      }
+    }
+  }
+}
+
+public class Bugs extends EnvelopPattern {
+  
+  public final CompoundParameter speed = (CompoundParameter)
+    new CompoundParameter("Speed", 10, 20, 1)
+    .setDescription("Speed of the bugs");
+  
+  public final CompoundParameter size =
+    new CompoundParameter("Size", .1, .02, .4)
+    .setDescription("Size of the bugs");
+  
+  public Bugs(LX lx) {
+    super(lx);
+    for (Rail rail : model.rails) {
+      for (int i = 0; i < 10; ++i) {
+        addLayer(new Layer(lx, rail));
+      }
+    }
+    addParameter("speed", this.speed);
+    addParameter("size", this.size);
+  }
+  
+  class RandomSpeed extends FunctionalParameter {
+    
+    private final float rand;
+    
+    RandomSpeed(float low, float hi) {
+      this.rand = random(low, hi);
+    }
+    
+    public double getValue() {
+      return this.rand * speed.getValue();
+    }
+  }
+  
+  class Layer extends LXModelLayer<EnvelopModel> {
+    
+    private final Rail rail;
+    private final LXModulator pos = startModulator(new SinLFO(
+      startModulator(new SinLFO(0, .5, new RandomSpeed(500, 1000)).randomBasis()),
+      startModulator(new SinLFO(.5, 1, new RandomSpeed(500, 1000)).randomBasis()),
+      new RandomSpeed(3000, 8000)
+    ).randomBasis());
+    
+    private final LXModulator size = startModulator(new SinLFO(
+      startModulator(new SinLFO(.1, .3, new RandomSpeed(500, 1000)).randomBasis()),
+      startModulator(new SinLFO(.5, 1, new RandomSpeed(500, 1000)).randomBasis()),
+      startModulator(new SinLFO(4000, 14000, random(3000, 18000)).randomBasis())
+    ).randomBasis());
+    
+    Layer(LX lx, Rail rail) {
+      super(lx);
+      this.rail = rail;
+    }
+    
+    public void run(double deltaMs) {
+      float size = Bugs.this.size.getValuef() * this.size.getValuef();
+      float falloff = 100 / max(size, (1.5*INCHES / model.yRange));
+      float pos = this.pos.getValuef();
+      for (LXPoint p : this.rail.points) {
+        float b = 100 - falloff * abs(p.yn - pos);
+        if (b > 0) {
+          addColor(p.index, LXColor.gray(b));
+        }
       }
     }
   }
