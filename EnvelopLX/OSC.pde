@@ -20,26 +20,26 @@ class EnvelopOscListener implements LXOscListener {
     } else if (message.matches("/envelop/meter/decode")) {
       envelop.decode.setLevels(message);
     } else if (message.hasPrefix("/envelop/meter/source")) {
-      int index = getIndex(message);
-      if (index > 0 && index < envelop.source.channels.length) {
+      int index = getIndex(message) - 1;
+      if (index >= 0 && index < envelop.source.channels.length) {
         envelop.source.setLevel(index, message);
       }
     } else if (message.hasPrefix("/envelop/source")) {
-      int index = getIndex(message);
-      if (index > 0 && index < envelop.source.channels.length) {
+      int index = getIndex(message) - 1;
+      if (index >= 0 && index < envelop.source.channels.length) {
         Envelop.Source.Channel channel = envelop.source.channels[index];
         float rx = 0, ry = 0, rz = 0;
         String type = message.getString();
-        if (type.equals("cartesian")) {
+        if (type.equals("xyz")) {
           rx = message.getFloat();
           ry = message.getFloat();
           rz = message.getFloat();
-        } else if (type.equals("polar")) {
+        } else if (type.equals("aed")) {
+          float azimuth = message.getFloat() / 180. * PI;
+          float elevation = message.getFloat() / 180. * PI;
           float radius = message.getFloat();
-          float azimuth = message.getFloat();
-          float elevation = message.getFloat();
-          rx = radius * cos(azimuth + HALF_PI) * cos(elevation);
-          ry = radius * sin(azimuth + HALF_PI) * cos(elevation);
+          rx = radius * cos(-azimuth + HALF_PI) * cos(elevation);
+          ry = radius * sin(-azimuth + HALF_PI) * cos(elevation);
           rz = radius * sin(elevation);
         }
         channel.xyz.set(rx, ry, rz);

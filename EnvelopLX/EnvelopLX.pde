@@ -125,7 +125,10 @@ static class Envelop extends LXRunnableComponent {
   
   abstract class Meter extends LXRunnableComponent {
 
+    private static final double TIMEOUT = 1000;
+    
     private final double[] targets;
+    private final double[] timeouts;
     
     public final BoundedParameter gain = (BoundedParameter)
       new BoundedParameter("Gain", 0, -24, 24)
@@ -149,16 +152,21 @@ static class Envelop extends LXRunnableComponent {
     
     protected Meter(String label, int numChannels) {
       super(label);
-      targets = new double[numChannels];
-      addParameter(gain);
-      addParameter(range);
-      addParameter(attack);
-      addParameter(release);
+      this.targets = new double[numChannels];
+      this.timeouts = new double[numChannels];
+      addParameter(this.gain);
+      addParameter(this.range);
+      addParameter(this.attack);
+      addParameter(this.release);
     }
     
     public void run(double deltaMs) {
       NormalizedParameter[] channels = getChannels();
       for (int i = 0; i < channels.length; ++i) {
+        this.timeouts[i] += deltaMs;
+        if (this.timeouts[i] > TIMEOUT) {
+          this.targets[i] = 0;
+        }
         double target = this.targets[i];
         double value = channels[i].getValue();
         double gain = (target >= value) ? Math.exp(-deltaMs / attack.getValue()) : Math.exp(-deltaMs / release.getValue());
@@ -170,6 +178,7 @@ static class Envelop extends LXRunnableComponent {
       double gainValue = this.gain.getValue();
       double rangeValue = this.range.getValue();
       this.targets[index] = constrain((float) (1 + (message.getFloat() + gainValue) / rangeValue), 0, 1);
+      this.timeouts[index] = 0;
     }
     
     public void setLevels(OscMessage message) {
@@ -177,6 +186,7 @@ static class Envelop extends LXRunnableComponent {
       double rangeValue = this.range.getValue();
       for (int i = 0; i < this.targets.length; ++i) {
         this.targets[i] = constrain((float) (1 + (message.getFloat() + gainValue) / rangeValue), 0, 1);
+        this.timeouts[i] = 0;
       }
     }
     
