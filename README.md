@@ -1,3 +1,5 @@
+## EnvelopLX
+
 ![EnvelopLX](media/enveloplx-screenshot.png)
 
 **EnvelopLX** is an interactive lighting application for [Envelop](http://www.envelop.us/). It runs in Processing using the [LX Studio](https://github.com/heronarts/LXStudio) framework. The system may be controlled directly, or via remote OSC control from [Envelop for Live](https://github.com/EnvelopSound/EnvelopForLive) devices, which can be composed and sequenced within Ableton Live 10. Real-time spatial audio metering and position data can also be used to control animation.
