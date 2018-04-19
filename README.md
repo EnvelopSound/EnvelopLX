@@ -9,9 +9,11 @@ First, download and install [Processing 3 &rarr;](https://processing.org/downloa
 ### For Users
 
 - [Download the software &rarr;](https://github.com/EnvelopSound/EnvelopLX/archive/master.zip)
-- Open EnvelopeLX.pde in Processing and run the sketch
+- Open EnvelopLX.pde in Processing and run the sketch
 
 ### For Developers
+
+Make a clone of the repository in your Processing sketchbook folder.
 
 ```Shell
 $ cd ~/Documents/Processing/
