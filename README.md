@@ -1,6 +1,6 @@
-## EnvelopLX
-
 ![EnvelopLX](media/enveloplx-screenshot.png)
+
+[Envelop](http://envelop.us) is a non-profit organization that amplifies the connective power of music through immersive listening spaces and open source spatial audio software. Three-dimensional experiences of sound and music bring people together, catalyzing shared moments of inspiration, empathy and wonder.
 
 **EnvelopLX** is an interactive lighting application for [Envelop](http://www.envelop.us/). It runs in Processing using the [LX Studio](https://github.com/heronarts/LXStudio) framework. The system may be controlled directly, or via remote OSC control from [Envelop for Live](https://github.com/EnvelopSound/EnvelopForLive) devices, which can be composed and sequenced within Ableton Live 10. Real-time spatial audio metering and position data can also be used to control animation.
 
