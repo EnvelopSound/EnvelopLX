@@ -1542,3 +1542,84 @@ public class Bugs extends EnvelopPattern {
     setColors(#000000);
   }
 }
+
+@LXCategory("Gradients")
+public class Koyaanisqatsi extends EnvelopPattern {
+  
+  private final PImage image = loadImage("koyaanisqatsi.png");
+  
+  public final CompoundParameter scale =
+    new CompoundParameter("Scale", .5)
+    .setDescription("Scaling of the gradient image across the columns");
+  
+  public final CompoundParameter offset =
+    new CompoundParameter("Offset", .5)
+    .setDescription("Offset of the gradient image relative to column center");
+  
+  public Koyaanisqatsi(LX lx) {
+    super(lx);
+    addParameter("scale", this.scale);
+    addParameter("offset", this.offset);
+    this.image.loadPixels();
+  }
+  
+  public void run(double deltaMs) {
+    float scale = this.scale.getValuef();
+    float offset = this.offset.getValuef();
+    for (LXPoint p : model.points) {
+      colors[p.index] = image.get((int) (((1 + offset + (p.yn -.5) * scale) % 1.f) * (image.width-1)), 0);
+    }
+  }
+  
+}
+
+@LXCategory("Gradients")
+public class SolidSteps extends EnvelopPattern {
+  
+  private final int[] steps = {
+    #ff0000,
+    #334499,
+    #559922,
+    #330044,
+    #442200,
+    #551122
+  };
+  
+  public final DiscreteParameter step =
+    new DiscreteParameter("Step", 0, steps.length - 1)
+    .setDescription("Which color step the pattern is on");
+  
+  public final CompoundParameter time = (CompoundParameter)
+    new CompoundParameter("Time", 100, 0, 5000)
+    .setUnits(LXParameter.Units.MILLISECONDS)
+    .setDescription("Amount of transition time between color stops"); 
+  
+  private int lastStep;
+  private int thisStep;
+  
+  private final LinearEnvelope blend = new LinearEnvelope(0, 1, time); 
+  
+  public SolidSteps(LX lx) {
+    super(lx);
+    addParameter("step", this.step);
+    addParameter("time", this.time);
+    this.blend.setValue(1);
+    addModulator(this.blend);
+  }
+  
+  public void onParameterChanged(LXParameter p) {
+    if (p == this.step) {
+      this.lastStep = this.thisStep;
+      this.thisStep = this.step.getValuei();
+      this.blend.trigger();
+    }
+  }
+  
+  public void run(double deltaMs) {
+    int c1 = this.steps[this.lastStep];
+    int c2 = this.steps[this.thisStep];
+    setColors(LXColor.lerp(c1, c2, this.blend.getValuef()));
+    
+  }
+  
+}
