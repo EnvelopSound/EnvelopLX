@@ -13,9 +13,9 @@ LXOutput getOutput(LX lx) throws IOException {
 class MidwayOutput extends LXDatagramOutput {
   MidwayOutput(LX lx) throws IOException {
     super(lx);
-    int columnIp = 101;
+    int columnIp = 201;
     for (Column column : venue.columns) {
-      addDatagram(new DDPDatagram(column).setAddress("10.0.0." + (columnIp++)));
+      addDatagram(new DDPDatagram(column).setAddress("192.168.1." + (columnIp++)));
     }
   }
 }
