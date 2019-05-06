@@ -11,6 +11,8 @@ public class Sizzle extends LXEffect {
   
   private final int[] buffer = new ModelBuffer(lx).getArray();
   
+  private final MultiplyBlend multiply = new MultiplyBlend(lx); 
+  
   private float base = 0;
   
   public Sizzle(LX lx) {
@@ -20,14 +22,14 @@ public class Sizzle extends LXEffect {
   }
   
   public void run(double deltaMs, double amount) {
-      double amt = amount * this.amount.getValue();
+    double amt = amount * this.amount.getValue();
     if (amt > 0) {
       base += deltaMs * .01 * speed.getValuef();
       for (int i = 0; i < this.buffer.length; ++i) {
         int val = (int) min(0xff, 500 * noise(i, base));
         this.buffer[i] = 0xff000000 | val | (val << 8) | (val << 16);
       }
-      MultiplyBlend.multiply(this.colors, this.buffer, amt, this.colors);
+      this.multiply.blend(this.colors, this.buffer, amt, this.colors);
     }
   }
 }
@@ -96,10 +98,9 @@ public static class Strobe extends LXEffect {
             colors[i] = LXColor.BLACK;
           }
         } else {
+          int mult = LXColor.gray(100 * strobef);
           for (int i = 0; i < colors.length; ++i) {
-            LXColor.RGBtoHSB(colors[i], hsb);
-            hsb[2] *= strobef;
-            colors[i] = Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]);
+            colors[i] = LXColor.multiply(colors[i], mult);
           }
         }
       }
@@ -123,8 +124,6 @@ public class LSD extends LXEffect {
     this.enabledDampingRelease.setValue(500);
   }
   
-  final float[] hsb = new float[3];
-
   private float accum = 0;
   private int equalCount = 0;
   private float sign = 1;
@@ -143,9 +142,8 @@ public class LSD extends LXEffect {
     float sf = scale.getValuef() / 1000.;
     float rf = range.getValuef();
     for (LXPoint p :  model.points) {
-      LXColor.RGBtoHSB(colors[p.index], hsb);
       float h = rf * noise(sf*p.x, sf*p.y, sf*p.z + accum);
-      int c2 = LX.hsb(h * 360, 100, hsb[2]*100);
+      int c2 = LX.hsb(h * 360, 100, LXColor.b(colors[p.index]));
       if (amount < 1) {
         colors[p.index] = LXColor.lerp(colors[p.index], c2, amount);
       } else {

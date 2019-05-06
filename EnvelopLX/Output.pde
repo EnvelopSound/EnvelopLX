@@ -6,6 +6,8 @@ LXOutput getOutput(LX lx) throws IOException {
     return new MidwayOutput(lx);
   case SATELLITE: 
     return new SatelliteOutput(lx);
+  case OCTET:
+    return new OctetOutput(lx);  
   }
   return null;
 }
@@ -36,5 +38,20 @@ class SatelliteOutput extends LXDatagramOutput {
       }
       ++columnIp;
     }
+  }
+}
+
+class OctetOutput extends LXDatagramOutput {
+  OctetOutput(LX lx) throws IOException {
+    super(lx);
+    int[] indices = new int[8];
+    for (int i = 0; i < indices.length; ++i) {
+      indices[i] = i;
+    }
+    addDatagram(
+      new ArtNetDatagram(indices, 512, 0)
+      // .setByteOrder(LXDatagram.ByteOrder.RBG)
+      .setAddress("192.168.1.200")
+    );
   }
 }

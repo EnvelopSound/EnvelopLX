@@ -9,11 +9,23 @@ EnvelopModel getModel() {
   switch (environment) {
   case SATELLITE: return new Satellite();
   case MIDWAY: return new Midway();
+  case OCTET: return new Octet();
   }
   return null;
 }
 
-static abstract class EnvelopModel extends LXModel {
+static abstract class FixtureModel extends LXModel {
+  
+  protected final LXAbstractFixture fixture;
+  
+  protected FixtureModel(LXAbstractFixture fixture) {
+    super(fixture.getPoints());
+    this.fixture = fixture;
+  }
+}
+    
+
+static abstract class EnvelopModel extends FixtureModel {
     
   static abstract class Config {
     
@@ -41,7 +53,7 @@ static abstract class EnvelopModel extends LXModel {
   
   protected EnvelopModel(Config config) {
     super(new Fixture(config));
-    Fixture f = (Fixture) fixtures.get(0);
+    Fixture f = (Fixture) this.fixture;
     columns = Collections.unmodifiableList(Arrays.asList(f.columns));
     final Arc[] arcs = new Arc[columns.size() * config.getArcs().length];
     final Rail[] rails = new Rail[columns.size() * config.getRails().length];
@@ -200,8 +212,60 @@ static class Satellite extends EnvelopModel {
   }
 }
 
+static class Octet extends EnvelopModel {
+  
+  final static float EDGE_LENGTH = 16*FEET;
+  final static float HALF_EDGE_LENGTH = EDGE_LENGTH / 2;
+  final static float INCIRCLE_RADIUS = HALF_EDGE_LENGTH + EDGE_LENGTH / sqrt(2);
+  
+  final static PVector[] PLATFORM_POSITIONS = {
+    new PVector( HALF_EDGE_LENGTH, -INCIRCLE_RADIUS,  101),
+    new PVector( INCIRCLE_RADIUS,  -HALF_EDGE_LENGTH, 102),
+    new PVector( INCIRCLE_RADIUS,   HALF_EDGE_LENGTH, 103),
+    new PVector( HALF_EDGE_LENGTH,  INCIRCLE_RADIUS,  104),
+    new PVector(-HALF_EDGE_LENGTH,  INCIRCLE_RADIUS,  105),
+    new PVector(-INCIRCLE_RADIUS,   HALF_EDGE_LENGTH, 106),
+    new PVector(-INCIRCLE_RADIUS,  -HALF_EDGE_LENGTH, 107),
+    new PVector(-HALF_EDGE_LENGTH, -INCIRCLE_RADIUS,  108)
+  };
+  
+  final static PVector[] COLUMN_POSITIONS;
+  static {
+    float ratio = (INCIRCLE_RADIUS - Column.RADIUS - 6*INCHES) / INCIRCLE_RADIUS;
+    COLUMN_POSITIONS = new PVector[PLATFORM_POSITIONS.length];
+    for (int i = 0; i < PLATFORM_POSITIONS.length; ++i) {
+      COLUMN_POSITIONS[i] = PLATFORM_POSITIONS[i].copy().mult(ratio);
+    }
+  };
+  
+  final static float POINT_SPACING = 1.31233596*INCHES;
+  
+  final static EnvelopModel.Config.Rail[] RAILS = {
+    new EnvelopModel.Config.Rail(new PVector(0, 0, 0), 1, POINT_SPACING),
+  };
+  
+  final static float[] ARC_POSITIONS = { };
+  
+  final static EnvelopModel.Config CONFIG = new EnvelopModel.Config() {
+    public PVector[] getColumns() {
+      return COLUMN_POSITIONS;
+    }
+    
+    public float[] getArcs() {
+      return ARC_POSITIONS;
+    }
+    
+    public EnvelopModel.Config.Rail[] getRails() {
+      return RAILS;
+    }
+  };
+  
+  Octet() {
+    super(CONFIG);
+  }
+}
 
-static class Column extends LXModel {
+static class Column extends FixtureModel {
   
   final static float SPEAKER_ANGLE = 22./180.*PI;
   
@@ -219,7 +283,7 @@ static class Column extends LXModel {
     super(new Fixture(config, transform));
     this.index = index;
     this.azimuth = azimuth;
-    Fixture f = (Fixture) fixtures.get(0);
+    Fixture f = (Fixture) this.fixture;
     this.arcs = Collections.unmodifiableList(Arrays.asList(f.arcs));
     this.rails = Collections.unmodifiableList(Arrays.asList(f.rails));
     List<LXPoint> railPoints = new ArrayList<LXPoint>();
@@ -263,7 +327,7 @@ static class Column extends LXModel {
   }
 }
 
-static class Rail extends LXModel {
+static class Rail extends FixtureModel {
   
   final static int LEFT = 0;
   final static int RIGHT = 1;
@@ -290,7 +354,7 @@ static class Rail extends LXModel {
   }
 }
 
-static class Arc extends LXModel {
+static class Arc extends FixtureModel {
   
   final static float RADIUS = Column.RADIUS;
   

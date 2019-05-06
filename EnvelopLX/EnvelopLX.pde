@@ -12,11 +12,12 @@
 
 enum Environment {
   MIDWAY,
-  SATELLITE
+  SATELLITE,
+  OCTET
 }
 
 // Change this line if you want a different configuration!
-Environment environment = Environment.MIDWAY;  
+Environment environment = Environment.OCTET;  
 LXStudio lx;  
 Envelop envelop;
 EnvelopModel venue;
@@ -45,7 +46,7 @@ public void initialize(LXStudio lx, LXStudio.UI ui) {
           
   // Output drivers
   try {
-    lx.engine.output.gammaCorrection.setValue(1);
+    lx.engine.output.gamma.setValue(1);
     lx.engine.output.enabled.setValue(false);
     lx.addOutput(getOutput(lx));
   } catch (Exception x) {
@@ -89,8 +90,8 @@ static class Envelop extends LXRunnableComponent {
   
   public Envelop(LX lx) {
     super(lx, "Envelop");
-    addSubcomponent(source);
-    addSubcomponent(decode);
+    addChild("source", source);
+    addChild("decode", decode);
     source.start();
     decode.start();
     start();
@@ -100,27 +101,6 @@ static class Envelop extends LXRunnableComponent {
   public void run(double deltaMs) {
     source.loop(deltaMs);
     decode.loop(deltaMs);
-  }
-  
-  private final static String KEY_SOURCE = "source";
-  private final static String KEY_DECODE = "decode";
-  
-  @Override
-  public void save(LX lx, JsonObject obj) {
-    super.save(lx, obj);
-    obj.add(KEY_SOURCE, LXSerializable.Utils.toObject(lx, this.source));
-    obj.add(KEY_DECODE, LXSerializable.Utils.toObject(lx, this.decode));
-  }
-  
-  @Override
-  public void load(LX lx, JsonObject obj) {
-    if (obj.has(KEY_SOURCE)) {
-      this.source.load(lx, obj.getAsJsonObject(KEY_SOURCE));
-    }
-    if (obj.has(KEY_DECODE)) {
-      this.decode.load(lx, obj.getAsJsonObject(KEY_DECODE));
-    }
-    super.load(lx, obj);
   }
   
   abstract class Meter extends LXRunnableComponent {

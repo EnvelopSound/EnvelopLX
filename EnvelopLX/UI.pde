@@ -2,6 +2,7 @@ UI3dComponent getUIVenue() {
   switch (environment) {
   case SATELLITE: return new UISatellite();
   case MIDWAY: return new UIMidway();
+  case OCTET: return new UIOctet();
   }
   return null;
 }
@@ -37,6 +38,10 @@ abstract class UIVenue extends UI3dComponent {
     pg.endShape(CLOSE);
     
     // Speakers
+    drawSpeakers(ui, pg);
+  }
+  
+  protected void drawSpeakers(UI ui, PGraphics pg) {
     pg.fill(#000000);
     pg.stroke(#202020);
     for (Column column : venue.columns) {
@@ -80,6 +85,38 @@ class UISatellite extends UIVenue {
       pg.vertex(v.x, -8*INCHES, v.y);
     }
     pg.endShape();
+  }
+}
+
+class UIOctet extends UISatellite {
+  
+  @Override
+  public void onDraw(UI ui, PGraphics pg) {
+    super.onDraw(ui, pg);    
+  }
+  
+  @Override
+  protected void drawSpeakers(UI ui, PGraphics pg) {
+    int[] colors = lx.getUIFrame().getColors();
+    pg.stroke(#202020);
+    int ci = 0;
+    for (Column column : venue.columns) {
+      pg.pushMatrix();
+      pg.fill(colors[ci++]);
+      pg.translate(column.cx, 0, column.cz);
+      pg.rotateY(-column.azimuth);
+      pg.beginShape(QUAD_STRIP);
+      pg.vertex(0, 0, 0);
+      pg.vertex(0, 7*FEET, 0);
+      pg.vertex(-6*INCHES, 0, -10*INCHES);
+      pg.vertex(-6*INCHES, 7*FEET, -10*INCHES);
+      pg.vertex(6*INCHES, 0, -10*INCHES);
+      pg.vertex(6*INCHES, 7*FEET, -10*INCHES);
+      pg.vertex(0, 0, 0);
+      pg.vertex(0, 7*FEET, 0);
+      pg.endShape();
+      pg.popMatrix();
+    }
   }
 }
   
