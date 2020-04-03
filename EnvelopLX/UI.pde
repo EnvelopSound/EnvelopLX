@@ -1,4 +1,4 @@
-UI3dComponent getUIVenue() {
+UIVenue getUIVenue() {
   switch (environment) {
   case SATELLITE: return new UISatellite();
   case MIDWAY: return new UIMidway();
@@ -17,6 +17,10 @@ abstract class UIVenue extends UI3dComponent {
   final static float SPEAKER_SIZE_X = 21*INCHES;
   final static float SPEAKER_SIZE_Y = 16*INCHES;
   final static float SPEAKER_SIZE_Z = 15*INCHES;
+  
+  public final BooleanParameter speakersVisible =
+    new BooleanParameter("speakersVisible", true)
+    .setDescription("Whether speakers are visible in the venue simulation");  
   
   @Override
   public void onDraw(UI ui, PGraphics pg) {
@@ -37,23 +41,25 @@ abstract class UIVenue extends UI3dComponent {
     pg.endShape(CLOSE);
     
     // Speakers
-    pg.fill(#000000);
-    pg.stroke(#202020);
-    for (Column column : venue.columns) {
-      pg.translate(column.cx, 0, column.cz);
-      pg.rotateY(-column.azimuth);
-      pg.translate(0, 9*INCHES, 0);
-      pg.rotateX(Column.SPEAKER_ANGLE);
-      pg.box(SPEAKER_SIZE_X, SPEAKER_SIZE_Y, SPEAKER_SIZE_Z);
-      pg.rotateX(-Column.SPEAKER_ANGLE);
-      pg.translate(0, 6*FEET-9*INCHES, 0);
-      pg.box(SPEAKER_SIZE_X, SPEAKER_SIZE_Y, SPEAKER_SIZE_Z);
-      pg.translate(0, 11*FEET + 3*INCHES - 6*FEET, 0);
-      pg.rotateX(-Column.SPEAKER_ANGLE);
-      pg.box(SPEAKER_SIZE_X, SPEAKER_SIZE_Y, SPEAKER_SIZE_Z);
-      pg.rotateX(Column.SPEAKER_ANGLE);
-      pg.rotateY(column.azimuth);
-      pg.translate(-column.cx, -11*FEET - 3*INCHES, -column.cz);
+    if (this.speakersVisible.isOn()) {    
+      pg.fill(#000000);
+      pg.stroke(#202020);
+      for (Column column : venue.columns) {
+        pg.translate(column.cx, 0, column.cz);
+        pg.rotateY(-column.azimuth);
+        pg.translate(0, 9*INCHES, 0);
+        pg.rotateX(Column.SPEAKER_ANGLE);
+        pg.box(SPEAKER_SIZE_X, SPEAKER_SIZE_Y, SPEAKER_SIZE_Z);
+        pg.rotateX(-Column.SPEAKER_ANGLE);
+        pg.translate(0, 6*FEET-9*INCHES, 0);
+        pg.box(SPEAKER_SIZE_X, SPEAKER_SIZE_Y, SPEAKER_SIZE_Z);
+        pg.translate(0, 11*FEET + 3*INCHES - 6*FEET, 0);
+        pg.rotateX(-Column.SPEAKER_ANGLE);
+        pg.box(SPEAKER_SIZE_X, SPEAKER_SIZE_Y, SPEAKER_SIZE_Z);
+        pg.rotateX(Column.SPEAKER_ANGLE);
+        pg.rotateY(column.azimuth);
+        pg.translate(-column.cx, -11*FEET - 3*INCHES, -column.cz);
+      }
     }
   }
   
@@ -183,6 +189,36 @@ class UIEnvelopMeter extends UI2dContainer {
   }
 }
 
+class UIEnvelopStream extends UICollapsibleSection {
+  UIEnvelopStream(LXStudio.UI ui, float w) {
+    super(ui, 0, 0, w, 124);
+    setTitle("ENVELOP STREAM");
+    setLayout(UI2dContainer.Layout.VERTICAL);
+    setChildMargin(4);
+    
+    new UIButton(0, 0, getContentWidth(), 16)
+    .setParameter(envelop.ui.camera.running)
+    .setLabel("Animate Camera")
+    .addToContainer(this);
+    
+    new UIButton(0, 0, getContentWidth(), 16)
+    .setParameter(envelop.ui.venue.speakersVisible)
+    .setLabel("Show Speakers")
+    .addToContainer(this);
+    
+    new UIButton(0, 0, getContentWidth(), 16)
+    .setParameter(ui.preview.pointCloud.visible)
+    .setLabel("Show Points")
+    .addToContainer(this);
+    
+    new UIButton(0, 0, getContentWidth(), 16)
+    .setParameter(envelop.ui.halos.visible)
+    .setLabel("Show Halos")
+    .addToContainer(this);
+  }
+}
+  
+
 class UISoundObjects extends UI3dComponent {
   final PFont objectLabelFont; 
 
@@ -213,5 +249,24 @@ class UISoundObjects extends UI3dComponent {
         pg.translate(-tx, -ty, -tz);
       }
     }    
+  }
+}
+
+class UIHalos extends UI3dComponent {
+  public void onDraw(UI ui, PGraphics pg) {
+    int[] colors = lx.getColors(); 
+    
+    pg.noStroke();
+    pg.sphereDetail(8);
+    for (LXPoint p : venue.railPoints) {
+      int c = colors[p.index];
+      int a = max(0xff & c, 0xff & (c >> 8), 0xff & (c >> 16)); 
+      
+      pg.fill((a << 24) | (c & 0x00ffffff));
+      pg.translate(p.x, p.y, p.z);
+      pg.sphere(a / 255. * 2*INCHES);
+      pg.translate(-p.x, -p.y, -p.z);
+    }
+      
   }
 }

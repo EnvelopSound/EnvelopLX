@@ -39,7 +39,7 @@ void setup() {
 }
 
 public void initialize(LXStudio lx, LXStudio.UI ui) {
-  envelop = new Envelop(lx);
+  envelop = new Envelop(lx, ui);
   lx.engine.registerComponent("envelop", envelop);
   lx.engine.addLoopTask(envelop);
           
@@ -71,29 +71,27 @@ public void initialize(LXStudio lx, LXStudio.UI ui) {
 }
     
 public void onUIReady(LXStudio lx, LXStudio.UI ui) {
-  ui.leftPane.audio.setVisible(false);
-  ui.preview.addComponent(getUIVenue());
-  ui.preview.addComponent(new UISoundObjects());
-  ui.preview.setPhi(PI/32).setMinRadius(2*FEET).setMaxRadius(48*FEET);
-  new UIEnvelopSource(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 2);
-  new UIEnvelopDecode(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 3);
+  envelop.ui.onReady(lx, ui);  
 }
 
 void draw() {
 }
 
-static class Envelop extends LXRunnableComponent {
+public class Envelop extends LXRunnableComponent {
   
-  public final Source source = new Source();
-  public final Decode decode = new Decode();
+  public final Source source;
+  public final Decode decode;
+  public final UI ui;
   
-  public Envelop(LX lx) {
+  public Envelop(LX lx, LXStudio.UI ui) {
     super(lx, "Envelop");
-    addSubcomponent(source);
-    addSubcomponent(decode);
+    addSubcomponent(this.source = new Source());
+    addSubcomponent(this.decode = new Decode());
     source.start();
     decode.start();
     start();
+    
+    this.ui = new UI();    
   }
   
   @Override
@@ -123,7 +121,7 @@ static class Envelop extends LXRunnableComponent {
     super.load(lx, obj);
   }
   
-  abstract class Meter extends LXRunnableComponent {
+  protected abstract class Meter extends LXRunnableComponent {
 
     private static final double TIMEOUT = 1000;
     
@@ -193,7 +191,7 @@ static class Envelop extends LXRunnableComponent {
     protected abstract NormalizedParameter[] getChannels();
   }
   
-  class Source extends Meter {
+  public class Source extends Meter {
     public static final int NUM_CHANNELS = 16;
     
     class Channel extends NormalizedParameter {
@@ -227,7 +225,7 @@ static class Envelop extends LXRunnableComponent {
     }
   }
   
-  class Decode extends Meter {
+  public class Decode extends Meter {
     
     public static final int NUM_CHANNELS = 8;
     public final NormalizedParameter[] channels = new NormalizedParameter[NUM_CHANNELS];
@@ -243,4 +241,66 @@ static class Envelop extends LXRunnableComponent {
       return this.channels;
     }
   }
+  
+  public class UI {
+    public final UIVenue venue;
+    public final UISoundObjects soundObjects;
+    public final Camera camera; 
+    public final UIHalos halos;
+    
+    private UI() {
+      this.venue = getUIVenue();
+      this.soundObjects = new UISoundObjects();
+      this.halos = new UIHalos();
+      this.camera = new Camera();
+    }
+    
+    public void onReady(LX lx, LXStudio.UI ui) {
+      ui.leftPane.audio.setVisible(false);
+      this.halos.setVisible(false);
+      ui.preview.addComponent(this.venue);
+      ui.preview.addComponent(this.soundObjects);
+      ui.preview.addComponent(this.halos);
+      ui.preview.setPhi(PI/32).setMinRadius(2*FEET).setMaxRadius(48*FEET);
+      new UIEnvelopSource(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 2);
+      new UIEnvelopDecode(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 3);
+      new UIEnvelopStream(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global);
+      ui.addLoopTask(this.camera);
+    }
+    
+    public class Camera extends LXRunnableComponent {
+      
+      private SinLFO theta = new SinLFO(-TWO_PI, TWO_PI, 390000);
+      private SinLFO phi = new SinLFO(0, 1, 99000);
+      private SinLFO radius = new SinLFO(10*FEET, 30*FEET, 130000);
+            
+      public Camera() {
+        this.theta.randomBasis().start();
+        this.phi.randomBasis().start();
+        this.radius.randomBasis().start();
+        this.running.addListener(new LXParameterListener() {
+          public void onParameterChanged(LXParameter p) {
+            if (running.isOn()) {
+              PVector eye = lx.ui.preview.getEye();
+              theta.setValue(atan2(eye.x, -eye.z));
+              phi.setValue(atan2(eye.y, dist(0, 0, eye.x, eye.z)));
+              radius.setValue(eye.mag());
+            }
+          }
+        });
+      }
+      
+      @Override
+      public void run(double deltaMs) {
+        this.theta.loop(deltaMs);
+        this.phi.loop(deltaMs);
+        this.radius.loop(deltaMs);
+        float phi = this.phi.getValuef();
+        lx.ui.preview.setTheta(this.theta.getValue());
+        lx.ui.preview.setPhi(phi * phi * PI / 2);
+        lx.ui.preview.setRadius(this.radius.getValuef());
+      }
+    }
+  }
+  
 }
