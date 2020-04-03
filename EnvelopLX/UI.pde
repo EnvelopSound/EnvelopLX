@@ -202,6 +202,11 @@ class UIEnvelopStream extends UICollapsibleSection {
     .addToContainer(this);
     
     new UIButton(0, 0, getContentWidth(), 16)
+    .setParameter(envelop.ui.soundObjects.visible)
+    .setLabel("Show Source Spheres")
+    .addToContainer(this);
+    
+    new UIButton(0, 0, getContentWidth(), 16)
     .setParameter(envelop.ui.venue.speakersVisible)
     .setLabel("Show Speakers")
     .addToContainer(this);
@@ -257,7 +262,10 @@ class UIHalos extends UI3dComponent {
     int[] colors = lx.getColors(); 
     
     pg.noStroke();
-    pg.sphereDetail(8);
+    pg.sphereDetail(12);
+    pg.pointLight(255, 255, 255, 0, 0, 0);
+    pg.ambientLight(64, 64, 64);
+    pg.directionalLight(128, 128, 128, 1, -1, 1);
     for (LXPoint p : venue.railPoints) {
       int c = colors[p.index];
       int a = max(0xff & c, 0xff & (c >> 8), 0xff & (c >> 16)); 
@@ -267,6 +275,7 @@ class UIHalos extends UI3dComponent {
       pg.sphere(a / 255. * 2*INCHES);
       pg.translate(-p.x, -p.y, -p.z);
     }
+    // pg.noLights();
       
   }
 }

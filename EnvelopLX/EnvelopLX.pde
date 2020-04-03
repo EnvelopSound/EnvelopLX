@@ -270,7 +270,7 @@ public class Envelop extends LXRunnableComponent {
     
     public class Camera extends LXRunnableComponent {
       
-      private SinLFO theta = new SinLFO(-TWO_PI, TWO_PI, 390000);
+      private SinLFO theta = new SinLFO(-TWO_PI, TWO_PI, 1790000);
       private SinLFO phi = new SinLFO(0, 1, 99000);
       private SinLFO radius = new SinLFO(10*FEET, 30*FEET, 130000);
             
