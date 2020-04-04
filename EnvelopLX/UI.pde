@@ -196,30 +196,72 @@ class UIEnvelopStream extends UICollapsibleSection {
     setLayout(UI2dContainer.Layout.VERTICAL);
     setChildMargin(4);
     
-    new UIButton(0, 0, getContentWidth(), 16)
+    UI2dContainer row;
+
+    new UIButton(0, 0, getContentWidth()  , 16)
     .setParameter(envelop.ui.camera.running)
     .setLabel("Animate Camera")
     .addToContainer(this);
     
-    new UIButton(0, 0, getContentWidth(), 16)
-    .setParameter(envelop.ui.soundObjects.visible)
-    .setLabel("Show Source Spheres")
-    .addToContainer(this);
+    row = row(null);
     
-    new UIButton(0, 0, getContentWidth(), 16)
+    new UIDoubleBox(0, 0, 40, 16)
+    .setParameter(envelop.ui.camera.thetaPeriod)
+    .addToContainer(row);
+    
+    new UIDoubleBox(0, 0, 40, 16)
+    .setParameter(envelop.ui.camera.phiRange)
+    .addToContainer(row);
+    
+    new UIDoubleBox(0, 0, 40, 16)
+    .setParameter(envelop.ui.camera.radiusDepth)
+    .addToContainer(row);
+    
+    new UIDoubleBox(0, 0, 40, 16)
+    .setParameter(envelop.ui.camera.radiusPeriod)
+    .addToContainer(row);
+            
+    row = row("Elements");
+    
+    new UIButton(0, 0, 40, 16)
     .setParameter(envelop.ui.venue.speakersVisible)
-    .setLabel("Show Speakers")
-    .addToContainer(this);
+    .setLabel("Boxes")
+    .addToContainer(row);
     
-    new UIButton(0, 0, getContentWidth(), 16)
+    new UIButton(0, 0, 40, 16)
+    .setParameter(envelop.ui.soundObjects.visible)
+    .setLabel("Orbs")
+    .addToContainer(row);
+        
+    new UIButton(0, 0, 40, 16)
     .setParameter(ui.preview.pointCloud.visible)
-    .setLabel("Show Points")
-    .addToContainer(this);
+    .setLabel("Points")
+    .addToContainer(row);
     
-    new UIButton(0, 0, getContentWidth(), 16)
+    new UIButton(0, 0, 40, 16)
     .setParameter(envelop.ui.halos.visible)
-    .setLabel("Show Halos")
-    .addToContainer(this);
+    .setLabel("Halos")
+    .addToContainer(row);
+    
+    row = row("Skybox");    
+    new UIDropMenu(0, 0, getContentWidth() - 44, 16, envelop.ui.skybox.skymap).addToContainer(row);
+    new UIDoubleBox(0, 0, 40, 16).setParameter(envelop.ui.skybox.alpha).addToContainer(row);
+    
+  }
+  
+  private UI2dContainer row(String label) {
+    if (label != null) {
+      new UILabel(0, 0, getContentWidth(), 12)
+      .setLabel(label)
+      .setTextAlignment(LEFT, CENTER)
+      .addToContainer(this);
+    }
+    
+    return (UI2dContainer)
+      new UI2dContainer(0, 0, getContentWidth(), 16)
+      .setLayout(UI2dContainer.Layout.HORIZONTAL)
+      .setChildMargin(4)
+      .addToContainer(this);
   }
 }
   
@@ -269,13 +311,123 @@ class UIHalos extends UI3dComponent {
     for (LXPoint p : venue.railPoints) {
       int c = colors[p.index];
       int a = max(0xff & c, 0xff & (c >> 8), 0xff & (c >> 16)); 
-      
-      pg.fill((a << 24) | (c & 0x00ffffff));
-      pg.translate(p.x, p.y, p.z);
-      pg.sphere(a / 255. * 2*INCHES);
-      pg.translate(-p.x, -p.y, -p.z);
+      if (a > 0) {      
+        pg.fill((a << 24) | (c & 0x00ffffff));
+        pg.translate(p.x, p.y, p.z);
+        pg.sphere(a / 255. * 2*INCHES);
+        pg.translate(-p.x, -p.y, -p.z);
+      }
     }
-    // pg.noLights();
+    pg.noLights();
       
   }
+}
+
+class UISkybox extends UI3dComponent {
+  
+  private PImage frontZ;
+  private PImage backZ;
+  private PImage leftX;
+  private PImage rightX;
+  private PImage downY;
+  private PImage upY;
+    
+  public final ObjectParameter<Skymap> skymap; 
+  
+  public final BoundedParameter alpha =
+    new BoundedParameter("Alpha", 1)
+    .setDescription("The alpha blending level of the skybox, lower to darken");
+  
+  public class Skymap {
+    
+    private final String name;
+    private final File folder;
+    
+    Skymap(String name, File folder) {
+      this.name = name;
+      this.folder = folder;
+    }
+    
+    public String toString() {
+      return this.name;
+    }
+  }
+  
+  private boolean reload = false;
+  private Skymap currentSkymap;
+  
+  public UISkybox() {
+    File skyboxFolder = saveFile("data/skymaps");
+    List<Skymap> skymaps = new ArrayList<Skymap>();
+    skymaps.add(new Skymap("None", null));
+    if (skyboxFolder.isDirectory()) {
+      for (File f : skyboxFolder.listFiles()) {
+        if (f.isDirectory()) {
+          skymaps.add(new Skymap(f.getName(), f));
+        }
+      }
+    }
+    
+    this.skymap =
+      new ObjectParameter<Skymap>("Skymap", skymaps.toArray(new Skymap[]{}))
+      .setDescription("Which skymap should be displayed around the Envelop environment"); 
+      
+    this.skymap.addListener(new LXParameterListener() {
+      public void onParameterChanged(LXParameter p) {
+        reload = true;
+      }
+    });
+  }
+  
+  private static final float SKYBOX_SIZE = 100*FEET;
+  
+  public void onDraw(UI ui, PGraphics pg) {
+    if (reload) {
+      this.currentSkymap = this.skymap.getObject();
+      if (this.currentSkymap.folder != null) {
+        String path = "data/skymaps/" + this.currentSkymap.folder.getName(); 
+        println("Loading skymap from " + path); 
+        this.frontZ = loadImage(path + "/0_Front+Z.png");
+        this.backZ = loadImage(path + "/1_Back-Z.png");
+        this.leftX = loadImage(path + "/2_Left+X.png");
+        this.rightX = loadImage(path + "/3_Right-X.png");
+        this.upY = loadImage(path + "/4_Up+Y.png");
+        this.downY = loadImage(path + "/5_Down-Y.png");
+      }
+      reload = false;
+    }
+    
+    if ((this.currentSkymap != null) && (this.currentSkymap.folder != null)) {
+      int alpha = 0xff & (int) (this.alpha.getValuef() * 255);
+      pg.pushMatrix();
+      pg.noStroke();
+      pg.tint(0xff000000 | (alpha << 16) | (alpha << 8) | (alpha));
+      pg.textureMode(NORMAL);
+      drawBoxFace(pg, this.frontZ);
+      pg.rotateY(-HALF_PI);
+      drawBoxFace(pg, this.rightX);
+      pg.rotateY(-HALF_PI);
+      drawBoxFace(pg, this.backZ);
+      pg.rotateY(-HALF_PI);
+      drawBoxFace(pg, this.leftX);
+      pg.rotateY(-HALF_PI);
+      pg.rotateX(-HALF_PI);
+      drawBoxFace(pg, this.upY);
+      pg.rotateX(PI);
+      drawBoxFace(pg, this.downY);
+      pg.popMatrix();
+    }
+  }
+  
+  private void drawBoxFace(PGraphics pg, PImage texture) {
+    pg.beginShape();
+    pg.texture(texture);
+    pg.vertex(-SKYBOX_SIZE, -SKYBOX_SIZE, SKYBOX_SIZE, 0, 1);
+    pg.vertex(-SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE, 0, 0);
+    pg.vertex(SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE, 1, 0);
+    pg.vertex(SKYBOX_SIZE, -SKYBOX_SIZE, SKYBOX_SIZE, 1, 1);
+    pg.endShape();
+  }
+    
+   
 }

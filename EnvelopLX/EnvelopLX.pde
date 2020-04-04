@@ -71,10 +71,11 @@ public void initialize(LXStudio lx, LXStudio.UI ui) {
 }
     
 public void onUIReady(LXStudio lx, LXStudio.UI ui) {
-  envelop.ui.onReady(lx, ui);  
+  envelop.ui.onReady(lx, ui);
 }
 
 void draw() {
+  lx.ui.preview.depth.setValue(2);
 }
 
 public class Envelop extends LXRunnableComponent {
@@ -245,13 +246,15 @@ public class Envelop extends LXRunnableComponent {
   public class UI {
     public final UIVenue venue;
     public final UISoundObjects soundObjects;
-    public final Camera camera; 
     public final UIHalos halos;
+    public final UISkybox skybox; 
+    public final Camera camera; 
     
     private UI() {
       this.venue = getUIVenue();
       this.soundObjects = new UISoundObjects();
       this.halos = new UIHalos();
+      this.skybox = new UISkybox();
       this.camera = new Camera();
     }
     
@@ -261,6 +264,7 @@ public class Envelop extends LXRunnableComponent {
       ui.preview.addComponent(this.venue);
       ui.preview.addComponent(this.soundObjects);
       ui.preview.addComponent(this.halos);
+      ui.preview.addComponent(this.skybox);
       ui.preview.setPhi(PI/32).setMinRadius(2*FEET).setMaxRadius(48*FEET);
       new UIEnvelopSource(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 2);
       new UIEnvelopDecode(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 3);
@@ -270,9 +274,42 @@ public class Envelop extends LXRunnableComponent {
     
     public class Camera extends LXRunnableComponent {
       
-      private SinLFO theta = new SinLFO(-TWO_PI, TWO_PI, 1790000);
-      private SinLFO phi = new SinLFO(0, 1, 99000);
-      private SinLFO radius = new SinLFO(10*FEET, 30*FEET, 130000);
+      public final BoundedParameter phiRange =
+        new BoundedParameter("Elevation Range", 15, 0, 90)
+        .setDescription("Sets the maximum range of the camera's elevation rotation");
+        
+      public final BoundedParameter thetaPeriod =
+        new BoundedParameter("Rotation Speed", .5)
+        .setDescription("Sets the speed of the camera's horizontal rotation");
+        
+      public final BoundedParameter radiusDepth =
+        new BoundedParameter("Radial Depth", 20, 0, 30)
+        .setDescription("Sets the level of the camera radial distance animation");
+        
+      public final BoundedParameter radiusPeriod =
+        new BoundedParameter("Depth Speed", .5)
+        .setDescription("Sets the speed of the camera's distance animation");
+      
+      private final SinLFO theta = new SinLFO(-TWO_PI, TWO_PI, new FunctionalParameter() {
+        public double getValue() {
+          return lerp(5000000, 200000, thetaPeriod.getValuef());
+        }
+      });
+      
+      private final SinLFO phi = new SinLFO(0, 1, 99000);
+      
+      private static final float MIN_RADIUS = 10*FEET; 
+      
+      private final SinLFO radius = new SinLFO(MIN_RADIUS, new FunctionalParameter() {
+        public double getValue() {
+          return MIN_RADIUS + radiusDepth.getValue() * FEET;
+        }
+      }, new FunctionalParameter() {
+        public double getValue() {
+          return lerp(500000, 10000, radiusPeriod.getValuef());
+        }
+      });
+            
             
       public Camera() {
         this.theta.randomBasis().start();
@@ -291,13 +328,13 @@ public class Envelop extends LXRunnableComponent {
       }
       
       @Override
-      public void run(double deltaMs) {
+      public void run(double deltaMs) {        
         this.theta.loop(deltaMs);
         this.phi.loop(deltaMs);
         this.radius.loop(deltaMs);
         float phi = this.phi.getValuef();
         lx.ui.preview.setTheta(this.theta.getValue());
-        lx.ui.preview.setPhi(phi * phi * PI / 2);
+        lx.ui.preview.setPhi(phi * phi * this.phiRange.getValuef() * PI / 180f);
         lx.ui.preview.setRadius(this.radius.getValuef());
       }
     }
