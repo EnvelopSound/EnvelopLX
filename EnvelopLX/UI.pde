@@ -416,6 +416,8 @@ class UISkybox extends UI3dComponent {
       pg.rotateX(PI);
       drawBoxFace(pg, this.downY);
       pg.popMatrix();
+      
+      pg.tint(0xffffffff);
     }
   }
   
