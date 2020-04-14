@@ -6,39 +6,103 @@ UIVenue getUIVenue() {
   return null;
 }
 
+public static enum LogoMode {
+  GRAPHIC_TEXT("envelop-logo-graphic-text.png"),
+  GRAPHIC("envelop-logo-graphic.png"),
+  INVERSE_TEXT("envelop-logo-inverse-text.png"),
+  INVERSE("envelop-logo-inverse.png"),
+  NONE(null);
+  
+  private final String path;
+  private PImage image;
+  
+  private LogoMode(String path) {
+    this.path = path;
+  }
+    
+  public PImage getImage(UI ui) {
+    if (this == NONE) {
+      return null;
+    }
+    if (this.image == null) {
+      this.image = ui.applet.loadImage(this.path);
+    }
+    return this.image;
+  }
+  
+  public String toString() {
+    switch (this) {
+    case GRAPHIC_TEXT: return "Full";
+    case GRAPHIC: return "Logo";
+    case INVERSE_TEXT: return "Inv";
+    case INVERSE: return "Only";
+    };
+    return "None";
+  }
+}
+
 abstract class UIVenue extends UI3dComponent {
 
   final static float BOOTH_SIZE_X = 6*FEET;
   final static float BOOTH_SIZE_Y = 40*INCHES;
   final static float BOOTH_SIZE_Z = 36*INCHES;
 
-  final static float LOGO_SIZE = 100*INCHES;
-  final PImage LOGO = loadImage("envelop-logo-clear.png");
+  final static float DEFAULT_LOGO_SIZE = 100*INCHES;
+    
   final static float SPEAKER_SIZE_X = 21*INCHES;
   final static float SPEAKER_SIZE_Y = 16*INCHES;
   final static float SPEAKER_SIZE_Z = 15*INCHES;
   
+  private PImage logoImage;
+  
   public final BooleanParameter speakersVisible =
     new BooleanParameter("speakersVisible", true)
-    .setDescription("Whether speakers are visible in the venue simulation");  
+    .setDescription("Whether speakers are visible in the venue simulation");
+    
+  public final BooleanParameter floorVisible =
+    new BooleanParameter("floorVisible", true)
+    .setDescription("Whether floor is visible in the venue simulation");
+    
+  public final EnumParameter<LogoMode> logoMode =
+    new EnumParameter<LogoMode>("logoMode", LogoMode.GRAPHIC_TEXT)
+    .setDescription("Which version of the logo to render");
+    
+  public final BoundedParameter logoTint =
+    new BoundedParameter("logoTint", 1)
+    .setDescription("Brightness of the logo");
+    
+  public final BoundedParameter logoSize =
+    new BoundedParameter("logoSize", DEFAULT_LOGO_SIZE, 40*INCHES, 180*INCHES)
+    .setDescription("Size of the logo");    
   
   @Override
   public void onDraw(UI ui, PGraphics pg) {
     pg.stroke(#000000);
     pg.fill(#202020);
-    drawFloor(ui, pg);
+    
+    if (this.floorVisible.isOn()) {
+      drawFloor(ui, pg);
+    }
     
     // Logo
-    pg.noFill();
-    pg.noStroke();
-    pg.beginShape();
-    pg.texture(LOGO);
-    pg.textureMode(NORMAL);
-    pg.vertex(-LOGO_SIZE, .1, -LOGO_SIZE, 0, 1);
-    pg.vertex(LOGO_SIZE, .1, -LOGO_SIZE, 1, 1);
-    pg.vertex(LOGO_SIZE, .1, LOGO_SIZE, 1, 0);
-    pg.vertex(-LOGO_SIZE, .1, LOGO_SIZE, 0, 0);
-    pg.endShape(CLOSE);
+    PImage logo = this.logoMode.getEnum().getImage(ui);
+    if (logo != null) {    
+      pg.noFill();
+      pg.noStroke();
+      pg.beginShape();
+      int tint = (int) (255 * this.logoTint.getValue());
+      pg.tint(0xff000000 | (tint << 16) | (tint << 8) | (tint));
+      pg.texture(logo);
+      pg.textureMode(NORMAL);
+      float logoSize = this.logoSize.getValuef();
+      
+      pg.vertex(-logoSize, .1, -logoSize, 0, 1);
+      pg.vertex(logoSize, .1, -logoSize, 1, 1);
+      pg.vertex(logoSize, .1, logoSize, 1, 0);
+      pg.vertex(-logoSize, .1, logoSize, 0, 0);
+      pg.endShape(CLOSE);
+      pg.tint(0xffffffff);
+    }
     
     // Speakers
     if (this.speakersVisible.isOn()) {    
@@ -242,6 +306,16 @@ class UIEnvelopStream extends UICollapsibleSection {
     .setParameter(envelop.ui.halos.visible)
     .setLabel("Halos")
     .addToContainer(row);
+    
+    row = row(null);
+    new UIButton(0, 0, 40, 16)
+    .setParameter(envelop.ui.venue.floorVisible)
+    .setLabel("Floor")
+    .addToContainer(row);
+    
+    new UIDropMenu(0, 0, 40, 16, envelop.ui.venue.logoMode).addToContainer(row);
+    new UIDoubleBox(0, 0, 40, 16).setParameter(envelop.ui.venue.logoTint).addToContainer(row);
+    new UIDoubleBox(0, 0, 40, 16).setParameter(envelop.ui.venue.logoSize).addToContainer(row);
     
     row = row("Skybox");    
     new UIDropMenu(0, 0, getContentWidth() - 44, 16, envelop.ui.skybox.skymap).addToContainer(row);
