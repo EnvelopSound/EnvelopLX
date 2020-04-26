@@ -80,8 +80,13 @@ void draw() {
 
 public class Envelop extends LXRunnableComponent {
   
+  // Envelop source sound object meters
   public final Source source;
+  
+  // Envelop decoded output meters for the columns
   public final Decode decode;
+  
+  // Envelop-specific UI customizations and objects
   public final UI ui;
   
   public Envelop(LX lx, LXStudio.UI ui) {
@@ -103,12 +108,14 @@ public class Envelop extends LXRunnableComponent {
   
   private final static String KEY_SOURCE = "source";
   private final static String KEY_DECODE = "decode";
+  private final static String KEY_UI = "ui";
   
   @Override
   public void save(LX lx, JsonObject obj) {
     super.save(lx, obj);
     obj.add(KEY_SOURCE, LXSerializable.Utils.toObject(lx, this.source));
     obj.add(KEY_DECODE, LXSerializable.Utils.toObject(lx, this.decode));
+    obj.add(KEY_UI, LXSerializable.Utils.toObject(lx, this.ui));
   }
   
   @Override
@@ -118,6 +125,9 @@ public class Envelop extends LXRunnableComponent {
     }
     if (obj.has(KEY_DECODE)) {
       this.decode.load(lx, obj.getAsJsonObject(KEY_DECODE));
+    }
+    if (obj.has(KEY_UI)) {
+      this.ui.load(lx, obj.getAsJsonObject(KEY_UI));
     }
     super.load(lx, obj);
   }
@@ -243,33 +253,64 @@ public class Envelop extends LXRunnableComponent {
     }
   }
   
-  public class UI {
-    public final UIVenue venue;
-    public final UISoundObjects soundObjects;
-    public final UIHalos halos;
-    public final UISkybox skybox; 
+  public class UI implements LXSerializable {
     public final Camera camera; 
     
+    public final List<UIVisual> visuals = new ArrayList<UIVisual>();
+    
     private UI() {
-      this.venue = getUIVenue();
-      this.soundObjects = new UISoundObjects();
-      this.halos = new UIHalos();
-      this.skybox = new UISkybox();
       this.camera = new Camera();
+      addVisual(new UISkybox());
+      addVisual(getUIVenue());
+      addVisual(new UIOrbs());
+      addVisual(new UISoundObjects());
+      addVisual(new UIFloatingDiscs());
+    }
+    
+    protected void addVisual(UIVisual visual) {
+      if (this.visuals.contains(visual)) {
+        throw new IllegalStateException("Cannot add two copies of same visual object: " + visual);
+      }
+      this.visuals.add(visual);
     }
     
     public void onReady(LX lx, LXStudio.UI ui) {
       ui.leftPane.audio.setVisible(false);
-      this.halos.setVisible(false);
-      ui.preview.addComponent(this.venue);
-      ui.preview.addComponent(this.soundObjects);
-      ui.preview.addComponent(this.halos);
-      ui.preview.addComponent(this.skybox);
+      for (UIVisual visual : this.visuals) {
+        ui.preview.addComponent(visual);
+      }
+      
       ui.preview.setPhi(PI/32).setMinRadius(2*FEET).setMaxRadius(48*FEET);
       new UIEnvelopSource(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 2);
       new UIEnvelopDecode(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 3);
-      new UIEnvelopStream(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global);
+      new UIVisuals(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global);
       ui.addLoopTask(this.camera);
+    }
+    
+    private static final String KEY_POINTS = "points";
+    private static final String KEY_VISUALS = "visuals";
+    
+    @Override
+    public void save(LX lx, JsonObject obj) {
+      obj.addProperty(KEY_POINTS, ((LXStudio) lx).ui.preview.pointCloud.isVisible());
+      obj.add(KEY_VISUALS, LXSerializable.Utils.toArray(lx, this.visuals));
+    }
+  
+    @Override
+    public void load(LX lx, JsonObject obj) {
+      LXSerializable.Utils.loadBoolean(((LXStudio) lx).ui.preview.pointCloud.visible, obj, KEY_POINTS);
+      if (obj.has(KEY_VISUALS)) {
+        JsonArray visualArr = obj.get(KEY_VISUALS).getAsJsonArray(); 
+        for (JsonElement visualElement : visualArr) {
+          JsonObject visualObj = (JsonObject) visualElement;
+          String visualClass = visualObj.get(UIVisual.KEY_CLASS).getAsString();
+          for (UIVisual visual : this.visuals) {
+            if (visual.getClass().getName().equals(visualClass)) {
+              visual.load(lx, visualObj);
+            }
+          }
+        }
+      }
     }
     
     public class Camera extends LXRunnableComponent {

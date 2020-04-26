@@ -41,7 +41,7 @@ public static enum LogoMode {
   }
 }
 
-abstract class UIVenue extends UI3dComponent {
+abstract class UIVenue extends UIVisual {
 
   final static float BOOTH_SIZE_X = 6*FEET;
   final static float BOOTH_SIZE_Y = 40*INCHES;
@@ -56,24 +56,32 @@ abstract class UIVenue extends UI3dComponent {
   private PImage logoImage;
   
   public final BooleanParameter speakersVisible =
-    new BooleanParameter("speakersVisible", true)
+    new BooleanParameter("Speakers", true)
     .setDescription("Whether speakers are visible in the venue simulation");
     
   public final BooleanParameter floorVisible =
-    new BooleanParameter("floorVisible", true)
+    new BooleanParameter("Floor", true)
     .setDescription("Whether floor is visible in the venue simulation");
     
   public final EnumParameter<LogoMode> logoMode =
-    new EnumParameter<LogoMode>("logoMode", LogoMode.GRAPHIC_TEXT)
+    new EnumParameter<LogoMode>("Logo Mode", LogoMode.GRAPHIC_TEXT)
     .setDescription("Which version of the logo to render");
     
   public final BoundedParameter logoTint =
-    new BoundedParameter("logoTint", 1)
+    new BoundedParameter("Logo Tint", 1)
     .setDescription("Brightness of the logo");
     
   public final BoundedParameter logoSize =
-    new BoundedParameter("logoSize", DEFAULT_LOGO_SIZE, 40*INCHES, 180*INCHES)
+    new BoundedParameter("Logo Size", DEFAULT_LOGO_SIZE, 40*INCHES, 180*INCHES)
     .setDescription("Size of the logo");    
+  
+  public UIVenue() {
+    addParameter("speakersVisible", this.speakersVisible);
+    addParameter("floorVisible", this.floorVisible);
+    addParameter("logoMode", this.logoMode);
+    addParameter("logoTint", this.logoTint);
+    addParameter("logoSize", this.logoSize);
+  }
   
   @Override
   public void onDraw(UI ui, PGraphics pg) {
@@ -89,13 +97,13 @@ abstract class UIVenue extends UI3dComponent {
     if (logo != null) {    
       pg.noFill();
       pg.noStroke();
+      
       pg.beginShape();
       int tint = (int) (255 * this.logoTint.getValue());
       pg.tint(0xff000000 | (tint << 16) | (tint << 8) | (tint));
       pg.texture(logo);
       pg.textureMode(NORMAL);
       float logoSize = this.logoSize.getValuef();
-      
       pg.vertex(-logoSize, .1, -logoSize, 0, 1);
       pg.vertex(logoSize, .1, -logoSize, 1, 1);
       pg.vertex(logoSize, .1, logoSize, 1, 0);
@@ -160,17 +168,21 @@ class UIMidway extends UIVenue {
     super.onDraw(ui, pg);
     
     // Desk
-    pg.translate(0, BOOTH_SIZE_Y/2, Midway.DEPTH/2 - BOOTH_SIZE_Z/2);
-    pg.box(BOOTH_SIZE_X, BOOTH_SIZE_Y, BOOTH_SIZE_Z);
-    pg.translate(0, -BOOTH_SIZE_Y/2, -Midway.DEPTH/2 + BOOTH_SIZE_Z/2);
-    
-    // Subwoofers
-    for (PVector pv : Midway.SUB_POSITIONS) {
-      pg.translate(pv.x, 10*INCHES, pv.y);
-      pg.rotateY(-QUARTER_PI);
-      pg.box(29*INCHES, 20*INCHES, 29*INCHES);
-      pg.rotateY(QUARTER_PI);
-      pg.translate(-pv.x, -10*INCHES, -pv.y);
+    if (this.speakersVisible.isOn()) {
+      pg.fill(#000000);
+      pg.stroke(#202020);
+      pg.translate(0, BOOTH_SIZE_Y/2, Midway.DEPTH/2 - BOOTH_SIZE_Z/2);
+      pg.box(BOOTH_SIZE_X, BOOTH_SIZE_Y, BOOTH_SIZE_Z);
+      pg.translate(0, -BOOTH_SIZE_Y/2, -Midway.DEPTH/2 + BOOTH_SIZE_Z/2);
+      
+      // Subwoofers
+      for (PVector pv : Midway.SUB_POSITIONS) {
+        pg.translate(pv.x, 10*INCHES, pv.y);
+        pg.rotateY(-QUARTER_PI);
+        pg.box(29*INCHES, 20*INCHES, 29*INCHES);
+        pg.rotateY(QUARTER_PI);
+        pg.translate(-pv.x, -10*INCHES, -pv.y);
+      }
     }
   }
   
@@ -253,22 +265,49 @@ class UIEnvelopMeter extends UI2dContainer {
   }
 }
 
-class UIEnvelopStream extends UICollapsibleSection {
-  UIEnvelopStream(LXStudio.UI ui, float w) {
+class UIVisuals extends UICollapsibleSection {
+  
+  private final Map<UIVisual, UI2dContainer> controls = new HashMap<UIVisual, UI2dContainer>(); 
+  
+  UIVisuals(LXStudio.UI ui, float w) {
     super(ui, 0, 0, w, 124);
-    setTitle("ENVELOP STREAM");
+    setTitle("VISUALS");
     setLayout(UI2dContainer.Layout.VERTICAL);
     setChildMargin(4);
-    
-    UI2dContainer row;
 
-    new UIButton(0, 0, getContentWidth()  , 16)
+    embellishCameraControls(ui);
+
+    for (UIVisual visual : envelop.ui.visuals) {
+      UI2dContainer control = new UI2dContainer(0, 0, getContentWidth(), 0);
+      control.setVisible(false);
+      visual.buildControlUI(ui, control);
+      this.controls.put(visual, control);      
+    }
+
+    UIVisualList visualList = new UIVisualList(ui, 0, 0, getContentWidth(), 20);
+    visualList.addToContainer(this);
+    
+    for (UIVisual visual : envelop.ui.visuals) {
+      this.controls.get(visual).addToContainer(this);
+    }
+    
+  }
+  
+  private void embellishCameraControls(LXStudio.UI ui) {
+     UI2dContainer row;
+    
+    UI2dContainer camera = ui.leftPane.camera;
+    float yp = camera.getContentHeight() + 4;
+
+    new UIButton(0, yp, getContentWidth(), 16)
     .setParameter(envelop.ui.camera.running)
     .setLabel("Animate Camera")
-    .addToContainer(this);
+    .addToContainer(camera);
     
-    row = row(null);
-    
+    yp += 20;
+    row = row(camera, null);
+    row.setY(yp);
+        
     new UIDoubleBox(0, 0, 40, 16)
     .setParameter(envelop.ui.camera.thetaPeriod)
     .addToContainer(row);
@@ -284,226 +323,76 @@ class UIEnvelopStream extends UICollapsibleSection {
     new UIDoubleBox(0, 0, 40, 16)
     .setParameter(envelop.ui.camera.radiusPeriod)
     .addToContainer(row);
-            
-    row = row("Elements");
     
-    new UIButton(0, 0, 40, 16)
-    .setParameter(envelop.ui.venue.speakersVisible)
-    .setLabel("Boxes")
-    .addToContainer(row);
+    yp += 20;
     
-    new UIButton(0, 0, 40, 16)
-    .setParameter(envelop.ui.soundObjects.visible)
-    .setLabel("Orbs")
-    .addToContainer(row);
-        
-    new UIButton(0, 0, 40, 16)
+    new UIButton(0, yp, getContentWidth(), 16)
     .setParameter(ui.preview.pointCloud.visible)
-    .setLabel("Points")
-    .addToContainer(row);
+    .setLabel("Show LED Points")
+    .addToContainer(camera);
+    yp += 20;
     
-    new UIButton(0, 0, 40, 16)
-    .setParameter(envelop.ui.halos.visible)
-    .setLabel("Halos")
-    .addToContainer(row);
-    
-    row = row(null);
-    new UIButton(0, 0, 40, 16)
-    .setParameter(envelop.ui.venue.floorVisible)
-    .setLabel("Floor")
-    .addToContainer(row);
-    
-    new UIDropMenu(0, 0, 40, 16, envelop.ui.venue.logoMode).addToContainer(row);
-    new UIDoubleBox(0, 0, 40, 16).setParameter(envelop.ui.venue.logoTint).addToContainer(row);
-    new UIDoubleBox(0, 0, 40, 16).setParameter(envelop.ui.venue.logoSize).addToContainer(row);
-    
-    row = row("Skybox");    
-    new UIDropMenu(0, 0, getContentWidth() - 44, 16, envelop.ui.skybox.skymap).addToContainer(row);
-    new UIDoubleBox(0, 0, 40, 16).setParameter(envelop.ui.skybox.alpha).addToContainer(row);
-    
+    camera.setContentHeight(yp);
   }
   
-  private UI2dContainer row(String label) {
+  private UI2dContainer focusedControls = null;
+  private void focusVisual(UIVisual visual) {
+    if (this.focusedControls != null) {
+      this.focusedControls.setVisible(false);
+    }
+    this.focusedControls = this.controls.get(visual);
+    this.focusedControls.setVisible(true);
+  }
+ 
+  private UI2dContainer row(UI2dContainer container, String label) {
+    
     if (label != null) {
       new UILabel(0, 0, getContentWidth(), 12)
       .setLabel(label)
       .setTextAlignment(LEFT, CENTER)
-      .addToContainer(this);
+      .addToContainer(container);
     }
     
     return (UI2dContainer)
       new UI2dContainer(0, 0, getContentWidth(), 16)
       .setLayout(UI2dContainer.Layout.HORIZONTAL)
       .setChildMargin(4)
-      .addToContainer(this);
-  }
-}
-  
-
-class UISoundObjects extends UI3dComponent {
-  final PFont objectLabelFont; 
-
-  UISoundObjects() {
-    this.objectLabelFont = loadFont("Arial-Black-24.vlw");
+      .addToContainer(container);
   }
   
-  public void onDraw(UI ui, PGraphics pg) {
-    for (Envelop.Source.Channel channel : envelop.source.channels) {
-      if (channel.active) {
-        float tx = channel.tx;
-        float ty = channel.ty;
-        float tz = channel.tz;
-        pg.directionalLight(40, 40, 40, .5, -.4, 1);
-        pg.ambientLight(40, 40, 40);
-        pg.translate(tx, ty, tz);
-        pg.noStroke();
-        pg.fill(0xff00ddff);
-        pg.sphere(6*INCHES);
-        pg.noLights();
-        pg.scale(1, -1);
-        pg.textAlign(CENTER, CENTER);
-        pg.textFont(objectLabelFont);
-        pg.textSize(4);
-        pg.fill(#00ddff);
-        pg.text(Integer.toString(channel.index), 0, -1*INCHES, -6.1*INCHES);
-        pg.scale(1, -1);
-        pg.translate(-tx, -ty, -tz);
-      }
-    }    
-  }
-}
-
-class UIHalos extends UI3dComponent {
-  public void onDraw(UI ui, PGraphics pg) {
-    int[] colors = lx.getColors(); 
-    
-    pg.noStroke();
-    pg.sphereDetail(12);
-    pg.pointLight(255, 255, 255, 0, 0, 0);
-    pg.ambientLight(64, 64, 64);
-    pg.directionalLight(128, 128, 128, 1, -1, 1);
-    for (LXPoint p : venue.railPoints) {
-      int c = colors[p.index];
-      int a = max(0xff & c, 0xff & (c >> 8), 0xff & (c >> 16)); 
-      if (a > 0) {      
-        pg.fill((a << 24) | (c & 0x00ffffff));
-        pg.translate(p.x, p.y, p.z);
-        pg.sphere(a / 255. * 2*INCHES);
-        pg.translate(-p.x, -p.y, -p.z);
+  class UIVisualList extends UIItemList.BasicList {
+    public UIVisualList(UI ui, float x, float y, float w, float h) {
+      super(ui, x, y, w, h);
+      setShowCheckboxes(true);
+      for (UIVisual visual : envelop.ui.visuals) {
+        addItem(new Item(visual));
       }
     }
-    pg.noLights();
+    
+    class Item extends UIItemList.Item {
       
+      public final UIVisual visual;
+      
+      public Item(UIVisual visual) {
+        this.visual = visual;
+      }
+      
+      public boolean isChecked() {
+        return this.visual.isVisible();
+      }
+      
+      public String getLabel() {
+        return this.visual.getName();
+      }
+      
+      public void onFocus() {
+        focusVisual(this.visual);
+      }
+      
+      public void onCheck(boolean checked) {
+        this.visual.setVisible(checked);
+      }
+    }
   }
 }
-
-class UISkybox extends UI3dComponent {
   
-  private PImage frontZ;
-  private PImage backZ;
-  private PImage leftX;
-  private PImage rightX;
-  private PImage downY;
-  private PImage upY;
-    
-  public final ObjectParameter<Skymap> skymap; 
-  
-  public final BoundedParameter alpha =
-    new BoundedParameter("Alpha", 1)
-    .setDescription("The alpha blending level of the skybox, lower to darken");
-  
-  public class Skymap {
-    
-    private final String name;
-    private final File folder;
-    
-    Skymap(String name, File folder) {
-      this.name = name;
-      this.folder = folder;
-    }
-    
-    public String toString() {
-      return this.name;
-    }
-  }
-  
-  private boolean reload = false;
-  private Skymap currentSkymap;
-  
-  public UISkybox() {
-    File skyboxFolder = saveFile("data/skymaps");
-    List<Skymap> skymaps = new ArrayList<Skymap>();
-    skymaps.add(new Skymap("None", null));
-    if (skyboxFolder.isDirectory()) {
-      for (File f : skyboxFolder.listFiles()) {
-        if (f.isDirectory()) {
-          skymaps.add(new Skymap(f.getName(), f));
-        }
-      }
-    }
-    
-    this.skymap =
-      new ObjectParameter<Skymap>("Skymap", skymaps.toArray(new Skymap[]{}))
-      .setDescription("Which skymap should be displayed around the Envelop environment"); 
-      
-    this.skymap.addListener(new LXParameterListener() {
-      public void onParameterChanged(LXParameter p) {
-        reload = true;
-      }
-    });
-  }
-  
-  private static final float SKYBOX_SIZE = 100*FEET;
-  
-  public void onDraw(UI ui, PGraphics pg) {
-    if (reload) {
-      this.currentSkymap = this.skymap.getObject();
-      if (this.currentSkymap.folder != null) {
-        String path = "data/skymaps/" + this.currentSkymap.folder.getName(); 
-        println("Loading skymap from " + path); 
-        this.frontZ = loadImage(path + "/0_Front+Z.png");
-        this.backZ = loadImage(path + "/1_Back-Z.png");
-        this.leftX = loadImage(path + "/2_Left+X.png");
-        this.rightX = loadImage(path + "/3_Right-X.png");
-        this.upY = loadImage(path + "/4_Up+Y.png");
-        this.downY = loadImage(path + "/5_Down-Y.png");
-      }
-      reload = false;
-    }
-    
-    if ((this.currentSkymap != null) && (this.currentSkymap.folder != null)) {
-      int alpha = 0xff & (int) (this.alpha.getValuef() * 255);
-      pg.pushMatrix();
-      pg.noStroke();
-      pg.tint(0xff000000 | (alpha << 16) | (alpha << 8) | (alpha));
-      pg.textureMode(NORMAL);
-      drawBoxFace(pg, this.frontZ);
-      pg.rotateY(-HALF_PI);
-      drawBoxFace(pg, this.rightX);
-      pg.rotateY(-HALF_PI);
-      drawBoxFace(pg, this.backZ);
-      pg.rotateY(-HALF_PI);
-      drawBoxFace(pg, this.leftX);
-      pg.rotateY(-HALF_PI);
-      pg.rotateX(-HALF_PI);
-      drawBoxFace(pg, this.upY);
-      pg.rotateX(PI);
-      drawBoxFace(pg, this.downY);
-      pg.popMatrix();
-      
-      pg.tint(0xffffffff);
-    }
-  }
-  
-  private void drawBoxFace(PGraphics pg, PImage texture) {
-    pg.beginShape();
-    pg.texture(texture);
-    pg.vertex(-SKYBOX_SIZE, -SKYBOX_SIZE, SKYBOX_SIZE, 0, 1);
-    pg.vertex(-SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE, 0, 0);
-    pg.vertex(SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE, 1, 0);
-    pg.vertex(SKYBOX_SIZE, -SKYBOX_SIZE, SKYBOX_SIZE, 1, 1);
-    pg.endShape();
-  }
-    
-   
-}
