@@ -269,13 +269,30 @@ class UIVisuals extends UICollapsibleSection {
   
   private final Map<UIVisual, UI2dContainer> controls = new HashMap<UIVisual, UI2dContainer>(); 
   
-  UIVisuals(LXStudio.UI ui, float w) {
+  UIVisuals(final LXStudio.UI ui, float w) {
     super(ui, 0, 0, w, 124);
     setTitle("VISUALS");
     setLayout(UI2dContainer.Layout.VERTICAL);
     setChildMargin(4);
 
     embellishCameraControls(ui);
+    
+    new UIButton(0, 0, w - 8, 16) {
+      public void onToggle(boolean on) {
+        if (on) {
+          getSurface().setSize(1732, 972);
+        }
+      }
+    }
+    .setMomentary(true)
+    .setLabel("Set 720p resolution")
+    .addToContainer(this);
+    
+    new UIButton(0, 0, w-8, 16)
+    .setParameter(videoRecording)
+    .setActiveColor(ui.theme.getAttentionColor())
+    .setLabel("Export Video Frames")
+    .addToContainer(this);
 
     for (UIVisual visual : envelop.ui.visuals) {
       UI2dContainer control = new UI2dContainer(0, 0, getContentWidth(), 0);

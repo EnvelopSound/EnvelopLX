@@ -21,10 +21,18 @@ LXStudio lx;
 Envelop envelop;
 EnvelopModel venue;
 
-void setup() {  
+final BooleanParameter videoRecording = new BooleanParameter("Recording", false);
+String videoRecordingFolder = null;
+int videoFrame = 0;
+
+void settings() {
+  size(1280, 960, P3D);
+}
+
+void setup() {
+  frameRate(30);
   long setupStart = System.nanoTime();
   // LX.logInitTiming();
-  size(1280, 960, P3D);
   venue = getModel();
   try {
     lx = new LXStudio(this, venue);
@@ -32,6 +40,18 @@ void setup() {
     x.printStackTrace();
     throw x;
   }
+  
+  videoRecording.addListener(new LXParameterListener() {
+    public void onParameterChanged(LXParameter p) {
+      if (videoRecording.isOn()) {
+        videoFrame = 0;
+        videoRecordingFolder = "export/" + new java.text.SimpleDateFormat("yyyy-MM-dd-HH.mm.ss").format(java.util.Calendar.getInstance().getTime());
+      } else {
+        println("Video exported to " + videoRecordingFolder); 
+        videoRecordingFolder = null;
+      }
+    }
+  });
   
   long setupFinish = System.nanoTime();
   println("Total initialization time: " + ((setupFinish - setupStart) / 1000000) + "ms"); 
@@ -76,6 +96,9 @@ public void onUIReady(LXStudio lx, LXStudio.UI ui) {
 
 void draw() {
   lx.ui.preview.depth.setValue(2);
+  if (videoRecordingFolder != null) {
+    lx.ui.preview.getGraphics().save(this.videoRecordingFolder + "/" + String.format("%05d", videoFrame++));
+  }
 }
 
 public class Envelop extends LXRunnableComponent {
