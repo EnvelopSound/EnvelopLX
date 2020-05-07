@@ -45,7 +45,7 @@ void setup() {
     public void onParameterChanged(LXParameter p) {
       if (videoRecording.isOn()) {
         videoFrame = 0;
-        videoRecordingFolder = "export/" + new java.text.SimpleDateFormat("yyyy-MM-dd-HH.mm.ss").format(java.util.Calendar.getInstance().getTime());
+        videoRecordingFolder = "export/" + new java.text.SimpleDateFormat("yyyy-MM-dd-HH'h'mm'm'ss's'").format(java.util.Calendar.getInstance().getTime());
       } else {
         println("Video exported to " + videoRecordingFolder); 
         videoRecordingFolder = null;

@@ -8,3 +8,5 @@ After that:
 - cd ~/Documents/Processing/EnvelopLX/EnvelopLX/export
 - ./encode.sh <export folder>
 - Example: ./encode.sh 2020-05-06-18.38.16
+- NOTE - Make sure there is no trailing slash!
+- Video file will be 2020-05-06-18.38.16.mov
