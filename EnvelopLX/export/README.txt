@@ -6,7 +6,6 @@ To Export video files:
 After that:
 - Open Mac Terminal
 - cd ~/Documents/Processing/EnvelopLX/EnvelopLX/export
-- sudo cp ffmpeg /usr/local/bin
 - ./encode.sh <export folder>
 - Example: ./encode.sh 2020-05-06-18.38.16
 - NOTE - Make sure there is no trailing slash!
