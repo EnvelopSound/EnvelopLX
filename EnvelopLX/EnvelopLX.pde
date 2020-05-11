@@ -24,6 +24,7 @@ EnvelopModel venue;
 final BooleanParameter videoRecording = new BooleanParameter("Recording", false);
 String videoRecordingFolder = null;
 int videoFrame = 0;
+float modifyFrameRate = -1;
 
 void settings() {
   size(1280, 960, P3D);
@@ -44,10 +45,13 @@ void setup() {
   videoRecording.addListener(new LXParameterListener() {
     public void onParameterChanged(LXParameter p) {
       if (videoRecording.isOn()) {
+        // Crank CPU try to get more frames out
+        modifyFrameRate = 60.1;
         videoFrame = 0;
         videoRecordingFolder = "export/" + new java.text.SimpleDateFormat("yyyy-MM-dd-HH'h'mm'm'ss's'").format(java.util.Calendar.getInstance().getTime());
       } else {
-        println("Video exported to " + videoRecordingFolder); 
+        println("Video exported to " + videoRecordingFolder);
+        modifyFrameRate = 30;
         videoRecordingFolder = null;
       }
     }
@@ -95,8 +99,14 @@ public void onUIReady(LXStudio lx, LXStudio.UI ui) {
 }
 
 void draw() {
+  if (this.modifyFrameRate > 0) {
+    frameRate(this.modifyFrameRate);
+    this.modifyFrameRate = -1;
+  }
+  
   lx.ui.preview.depth.setValue(2);
   if (videoRecordingFolder != null) {
+    lx.ui.preview.getGraphics().hint(ENABLE_ASYNC_SAVEFRAME);
     lx.ui.preview.getGraphics().save(this.videoRecordingFolder + "/" + String.format("%05d", videoFrame++));
   }
 }
