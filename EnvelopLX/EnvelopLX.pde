@@ -57,6 +57,8 @@ void setup() {
     }
   });
   
+  registerMethod("pre", this);
+    
   long setupFinish = System.nanoTime();
   println("Total initialization time: " + ((setupFinish - setupStart) / 1000000) + "ms"); 
 
@@ -96,6 +98,10 @@ public void initialize(LXStudio lx, LXStudio.UI ui) {
     
 public void onUIReady(LXStudio lx, LXStudio.UI ui) {
   envelop.ui.onReady(lx, ui);
+}
+
+void pre() {
+  envelop.ui.beforeDraw();
 }
 
 void draw() {
@@ -298,6 +304,14 @@ public class Envelop extends LXRunnableComponent {
       addVisual(new UIOrbs());
       addVisual(new UISoundObjects());
       addVisual(new UIFloatingDiscs());
+    }
+    
+    protected void beforeDraw() {
+      for (UIVisual visual : this.visuals) {
+        if (visual.isVisible()) {
+          visual.beforeDraw(lx.ui);
+        }
+      }
     }
     
     protected void addVisual(UIVisual visual) {

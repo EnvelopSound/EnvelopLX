@@ -25,6 +25,14 @@ public abstract class UIVisual extends UI3dComponent implements LXSerializable {
     }
     return className;
   }
+  
+  /**
+   * Subclasses may override to do offscreen-rendering before the actual
+   * composited draw pass. Note that access to the main pg object is not
+   * allowed yet. A separate, explicit pg object should be managed and
+   * used by the visual.
+   */
+  protected void beforeDraw(UI ui) {}
     
   /**
    * Adds a parameter to the visual device. A UI to control the parameter will be generated
