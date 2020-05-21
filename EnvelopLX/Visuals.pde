@@ -588,8 +588,8 @@ class UIMarbleTexture extends UIVisual {
     if (this.isEnvironmentalMap.isOn()) pg.shape(globe);
 
     if (this.isTexture.isOn()) {
-      pg.camera(0, 0, (pg.height/1.25), 0, 0, 0, 0, 1, 0);
       pg.push();
+      pg.camera(0, 0, (pg.height/1.25), 0, 0, 0, 0, 1, 0);
       pg.translate(0, 0, (pg.height/1.25)-10);
       pg.noStroke();
       pg.blendMode(ADD);
