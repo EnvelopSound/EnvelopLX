@@ -304,6 +304,9 @@ public class Envelop extends LXRunnableComponent {
       addVisual(new UIOrbs());
       addVisual(new UISoundObjects());
       addVisual(new UIFloatingDiscs());
+      
+      // The marble texture visual
+      addVisual(new UIMarbleTexture());
     }
     
     protected void beforeDraw() {
