@@ -410,7 +410,8 @@ class UIFloatingDiscs extends UIVisual {
 
 /*
  * Marble Texture effect in GLSL
- * Running in real time
+ * Copyright 2020 - Giovanni Muzio
+ * https://kesson.io
  *
  * fBM thanks to:
  *
@@ -421,8 +422,6 @@ class UIFloatingDiscs extends UIVisual {
  * https://www.iquilezles.org/www/articles/warp/warp.htm
  * https://www.iquilezles.org/www/articles/fbm/fbm.htm
  *
- * Code adapted, modified and merged by Giovanni Muzio - Kesson
- * https://kesson.io
  */
 
 class UIMarbleTexture extends UIVisual {
