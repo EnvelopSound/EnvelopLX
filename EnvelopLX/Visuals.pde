@@ -173,7 +173,7 @@ class UIOrbs extends UIVisual {
   }
 
   public void onDraw(UI ui, PGraphics pg) {
-    int[] colors = lx.getColors(); 
+    int[] colors = ui.lx.getUIFrame().getColors(); 
     float radius = this.radius.getValuef();
 
     pg.noStroke();

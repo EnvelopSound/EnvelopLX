@@ -17,7 +17,7 @@ enum Environment {
 
 // Change this line if you want a different configuration!
 Environment environment = Environment.MIDWAY;  
-LXStudio lx;  
+LXStudio lxstudio;  
 Envelop envelop;
 EnvelopModel venue;
 
@@ -36,7 +36,11 @@ void setup() {
   // LX.logInitTiming();
   venue = getModel();
   try {
-    lx = new LXStudio(this, venue);
+    LXStudio.Flags flags = new LXStudio.Flags(this);
+    flags.useGLPointCloud = true;
+    flags.startMultiThreaded = true;
+    flags.resizable = true;
+    lxstudio = new LXStudio(this, flags, venue);
   } catch (Exception x) {
     x.printStackTrace();
     throw x;
@@ -64,14 +68,14 @@ void setup() {
 
 }
 
-public void initialize(LXStudio lx, LXStudio.UI ui) {
+public void initializeUI(LXStudio lx, LXStudio.UI ui) {
   envelop = new Envelop(lx, ui);
   lx.engine.registerComponent("envelop", envelop);
   lx.engine.addLoopTask(envelop);
           
   // Output drivers
   try {
-    lx.engine.output.gammaCorrection.setValue(1);
+    lx.engine.output.gamma.setValue(1);
     lx.engine.output.enabled.setValue(false);
     lx.addOutput(getOutput(lx));
   } catch (Exception x) {
@@ -98,6 +102,7 @@ public void initialize(LXStudio lx, LXStudio.UI ui) {
     
 public void onUIReady(LXStudio lx, LXStudio.UI ui) {
   envelop.ui.onReady(lx, ui);
+  ui.leftPane.setActiveSection(2);
 }
 
 void pre() {
@@ -110,10 +115,10 @@ void draw() {
     this.modifyFrameRate = -1;
   }
   
-  lx.ui.preview.depth.setValue(2);
+  lxstudio.ui.preview.depth.setValue(2);
   if (videoRecordingFolder != null) {
-    lx.ui.preview.getGraphics().hint(ENABLE_ASYNC_SAVEFRAME);
-    lx.ui.preview.getGraphics().save(this.videoRecordingFolder + "/" + String.format("%05d", videoFrame++));
+    lxstudio.ui.preview.getGraphics().hint(ENABLE_ASYNC_SAVEFRAME);
+    lxstudio.ui.preview.getGraphics().save(this.videoRecordingFolder + "/" + String.format("%05d", videoFrame++));
   }
 }
 
@@ -130,8 +135,8 @@ public class Envelop extends LXRunnableComponent {
   
   public Envelop(LX lx, LXStudio.UI ui) {
     super(lx, "Envelop");
-    addSubcomponent(this.source = new Source());
-    addSubcomponent(this.decode = new Decode());
+    addChild("source", this.source = new Source());
+    addChild("decode", this.decode = new Decode());
     source.start();
     decode.start();
     start();
@@ -152,13 +157,12 @@ public class Envelop extends LXRunnableComponent {
   @Override
   public void save(LX lx, JsonObject obj) {
     super.save(lx, obj);
-    obj.add(KEY_SOURCE, LXSerializable.Utils.toObject(lx, this.source));
-    obj.add(KEY_DECODE, LXSerializable.Utils.toObject(lx, this.decode));
     obj.add(KEY_UI, LXSerializable.Utils.toObject(lx, this.ui));
   }
   
   @Override
   public void load(LX lx, JsonObject obj) {
+    // NOTE: backwards-compatibility with older save files
     if (obj.has(KEY_SOURCE)) {
       this.source.load(lx, obj.getAsJsonObject(KEY_SOURCE));
     }
@@ -312,7 +316,7 @@ public class Envelop extends LXRunnableComponent {
     protected void beforeDraw() {
       for (UIVisual visual : this.visuals) {
         if (visual.isVisible()) {
-          visual.beforeDraw(lx.ui);
+          visual.beforeDraw(lxstudio.ui);
         }
       }
     }
@@ -328,8 +332,7 @@ public class Envelop extends LXRunnableComponent {
       ui.leftPane.audio.setVisible(false);
       for (UIVisual visual : this.visuals) {
         ui.preview.addComponent(visual);
-      }
-      
+      }      
       ui.preview.setPhi(PI/32).setMinRadius(2*FEET).setMaxRadius(48*FEET);
       new UIEnvelopSource(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 2);
       new UIEnvelopDecode(ui, ui.leftPane.global.getContentWidth()).addToContainer(ui.leftPane.global, 3);
@@ -409,7 +412,7 @@ public class Envelop extends LXRunnableComponent {
         this.running.addListener(new LXParameterListener() {
           public void onParameterChanged(LXParameter p) {
             if (running.isOn()) {
-              PVector eye = lx.ui.preview.getEye();
+              PVector eye = lxstudio.ui.preview.getEye();
               theta.setValue(atan2(eye.x, -eye.z));
               phi.setValue(atan2(eye.y, dist(0, 0, eye.x, eye.z)));
               radius.setValue(eye.mag());
@@ -424,9 +427,9 @@ public class Envelop extends LXRunnableComponent {
         this.phi.loop(deltaMs);
         this.radius.loop(deltaMs);
         float phi = this.phi.getValuef();
-        lx.ui.preview.setTheta(this.theta.getValue());
-        lx.ui.preview.setPhi(phi * phi * this.phiRange.getValuef() * PI / 180f);
-        lx.ui.preview.setRadius(this.radius.getValuef());
+        lxstudio.ui.preview.setTheta(this.theta.getValue());
+        lxstudio.ui.preview.setPhi(phi * phi * this.phiRange.getValuef() * PI / 180f);
+        lxstudio.ui.preview.setRadius(this.radius.getValuef());
       }
     }
   }

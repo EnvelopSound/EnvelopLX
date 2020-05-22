@@ -14,9 +14,9 @@ class EnvelopOscListener implements LXOscListener {
   
   public void oscMessage(OscMessage message) {
     if (message.matches("/envelop/tempo/beat")) {
-      lx.tempo.trigger(message.getInt()-1);
+      lxstudio.engine.tempo.trigger(message.getInt()-1);
     } else if (message.matches("/envelop/tempo/bpm")) {
-      lx.tempo.setBpm(message.getDouble());
+      lxstudio.engine.tempo.setBpm(message.getDouble());
     } else if (message.matches("/envelop/meter/decode")) {
       envelop.decode.setLevels(message);
     } else if (message.hasPrefix("/envelop/meter/source")) {
@@ -175,7 +175,7 @@ static class EnvelopOscClient implements LXOscListener {
     }
 
     // Register to listen for pattern changes 
-    lx.engine.getChannel(0).addListener(new LXChannel.AbstractListener() {
+    lx.engine.mixer.getChannel(0).addListener(new LXChannel.AbstractListener() {
       public void patternDidChange(LXChannel channel, LXPattern pattern) {
         int i = 0;
         for (LXPattern p : channel.getPatterns()) {
@@ -200,10 +200,10 @@ static class EnvelopOscClient implements LXOscListener {
       // TODO(mcslee): sanitize input
       knobs[message.getInt()].set(message.getDouble());
     } else if (message.matches("/lx/tempo/bpm")) {
-      lx.tempo.setBpm(message.getDouble());
-      println("Set bpm to: " + lx.tempo.bpm());
+      lx.engine.tempo.setBpm(message.getDouble());
+      println("Set bpm to: " + lx.engine.tempo.bpm());
     } else if (message.matches("/lx/tempo/tap")) {
-      lx.tempo.trigger(false);
+      lx.engine.tempo.trigger(false);
     }
   }
   

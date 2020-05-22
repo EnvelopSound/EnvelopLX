@@ -280,7 +280,7 @@ class UIVisuals extends UICollapsibleSection {
     new UIButton(0, 0, w - 8, 16) {
       public void onToggle(boolean on) {
         if (on) {
-          getSurface().setSize(1732, 972);
+          ui.resize(1732, 972);
         }
       }
     }
