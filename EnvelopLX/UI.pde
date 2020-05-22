@@ -412,34 +412,3 @@ class UIVisuals extends UICollapsibleSection {
     }
   }
 }
-
-public class UIColorPicker extends UI2dComponent {
-  
-  private final ColorParameter clr;
-  
-  public UIColorPicker(float x, float y, float w, float h, ColorParameter clr) {
-    super(x, y, w, h);
-    setBorderColor(UI.get().theme.getControlBorderColor());
-    this.clr = clr;
-  }
-  
-  @Override
-  public void onDraw(UI ui, PGraphics pg) {
-    pg.fill(this.clr.getColor());
-    pg.noStroke();
-    pg.rect(0, 0, this.width, this.height);
-  }
-  
-  @Override
-  public void onMouseDragged(MouseEvent mouseEvent, float mx, float my, float dx, float dy) {
-    this.clr.hue.setValue((360 + this.clr.hue.getValue() + 2*dx) % 360);
-    if (mouseEvent.isShiftDown()) {
-      this.clr.saturation.setValue(constrain(this.clr.saturation.getValuef() - dy, 0, 100));
-    } else {
-      this.clr.brightness.setValue(constrain(this.clr.brightness.getValuef() - dy, 0, 100));
-    }
-    redraw();
-  }
-  
-}
-  
