@@ -62,6 +62,8 @@ public abstract class UIVisual extends UI3dComponent implements LXSerializable {
         control = new UIDoubleBox(xp, yp, controlWidth, 16).setParameter((BoundedParameter) p);
       } else if (p instanceof DiscreteParameter) {
         control = new UIDropMenu(xp, yp, controlWidth, 16, (DiscreteParameter) p);
+      } else if (p instanceof ColorParameter) {
+        control = new UIColorPicker(xp, yp, controlWidth, 16, (ColorParameter) p);
       }
       if (control != null) {
         new UILabel(0, yp, controls.getContentWidth() - control.getWidth() - 4, 16)
@@ -430,6 +432,18 @@ class UIMarbleTexture extends UIVisual {
   PGraphics marbleGraphic;
   PShape globe;
 
+  public final ColorParameter baseColor = 
+    new ColorParameter("Base Color", rgbf(0.086f, 0.01f, 0.20f));
+    
+  public final ColorParameter finalColor = 
+    new ColorParameter("Final Color", rgbf(0.90f, 0.06f, 0.096f));
+    
+  public final ColorParameter colorMixA = 
+    new ColorParameter("Color Mix A", rgbf(0.06f, 0.96f, 0.99f));
+    
+  public final ColorParameter colorMixB = 
+    new ColorParameter("Color Mix B", rgbf(0.00f, 0.00f, 0.90f));    
+
   public final BoundedParameter hurst_exponent =
     new BoundedParameter("Hurst Exp.", 0.5f, 0.25f, 0.75f)
     .setDescription("The parameter that controls the behavior of the self-similarity, its fractal dimension and its power spectrum.");
@@ -472,6 +486,11 @@ class UIMarbleTexture extends UIVisual {
     // UI controls
     addParameter("environmental Map", this.isEnvironmentalMap);
     addParameter("texture", this.isTexture);
+    addParameter("baseColor", this.baseColor);
+    addParameter("finalColor", this.finalColor);
+    addParameter("colorMixA", this.colorMixA);
+    addParameter("colorMixB", this.colorMixB);
+    
     addParameter("hurst_exponent", this.hurst_exponent);
     addParameter("size", this.size);
     addParameter("octaves", this.octaves);
@@ -502,15 +521,27 @@ class UIMarbleTexture extends UIVisual {
     marbleShader.set("opacity", opacity);
 
     // The colors of the shader
-    marbleShader.set("baseColor", 0.086f, 0.01f, 0.20f);
-    marbleShader.set("colorMixA", 0.06f, 0.96f, 0.99f);
-    marbleShader.set("colorMixB", 0.00f, 0.00f, 0.90f);
-    marbleShader.set("finalColor", 0.90f, 0.06f, 0.096f);
-
+    setMarbleShaderColor("baseColor", this.baseColor);
+    setMarbleShaderColor("finalColor", this.finalColor);
+    setMarbleShaderColor("colorMixA", this.colorMixA);
+    setMarbleShaderColor("colorMixB", this.colorMixB);
+    
     noStroke();
     globe = createShape(SPHERE, 10000);
   }
-
+  
+  private int rgbf(float r, float g, float b) {
+    return LXColor.rgb((int) (r*255), (int) (g*255), (int) (b*255));
+  }
+  
+  private void setMarbleShaderColor(String attribute, ColorParameter clr) {
+    int c = clr.getColor();
+    float r = ((c & 0xff0000) >> 16) / 255f;
+    float g = ((c & 0xff00) >> 8) / 255f;
+    float b = (c & 0xff) / 255f;
+    marbleShader.set(attribute, r, g, b);
+  }
+  
   public String getName() {
     return "Marble Texture";
   }
@@ -536,10 +567,10 @@ class UIMarbleTexture extends UIVisual {
     marbleShader.set("opacity", opacity);
 
     // The colors of the shader
-    marbleShader.set("baseColor", 0.086f, 0.01f, 0.20f);
-    marbleShader.set("colorMixA", 0.06f, 0.96f, 0.99f);
-    marbleShader.set("colorMixB", 0.00f, 0.00f, 0.90f);
-    marbleShader.set("finalColor", 0.90f, 0.06f, 0.096f);
+    setMarbleShaderColor("baseColor", this.baseColor);
+    setMarbleShaderColor("finalColor", this.finalColor);
+    setMarbleShaderColor("colorMixA", this.colorMixA);
+    setMarbleShaderColor("colorMixB", this.colorMixB);
 
     marbleGraphic.beginDraw();
     marbleGraphic.background(0);
@@ -556,8 +587,8 @@ class UIMarbleTexture extends UIVisual {
     if (this.isEnvironmentalMap.isOn()) pg.shape(globe);
 
     if (this.isTexture.isOn()) {
-      pg.camera(0, 0, (pg.height/1.25), 0, 0, 0, 0, 1, 0);
       pg.push();
+      pg.camera(0, 0, (pg.height/1.25), 0, 0, 0, 0, 1, 0);
       pg.translate(0, 0, (pg.height/1.25)-10);
       pg.noStroke();
       pg.blendMode(ADD);
