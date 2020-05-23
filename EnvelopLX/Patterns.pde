@@ -854,7 +854,7 @@ public class Tron extends LXPattern {
     
     final int index;
     
-    final TriangleLFO pos = new TriangleLFO(0, lx.total, period);
+    final TriangleLFO pos = new TriangleLFO(0, model.size, period);
     
     private final MutableParameter targetBrightness = new MutableParameter(100); 
     

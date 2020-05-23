@@ -27,81 +27,9 @@ public class Sizzle extends LXEffect {
         int val = (int) min(0xff, 500 * noise(i, base));
         this.buffer[i] = 0xff000000 | val | (val << 8) | (val << 16);
       }
-      MultiplyBlend.multiply(this.colors, this.buffer, amt, this.colors);
-    }
-  }
-}
-
-@LXCategory("Form")
-public static class Strobe extends LXEffect {
-  
-  public enum Waveshape {
-    TRI,
-    SIN,
-    SQUARE,
-    UP,
-    DOWN
-  };
-  
-  public final EnumParameter<Waveshape> mode = new EnumParameter<Waveshape>("Shape", Waveshape.TRI);
-  
-  public final CompoundParameter frequency = (CompoundParameter)
-    new CompoundParameter("Freq", 1, .05, 10).setUnits(LXParameter.Units.HERTZ);  
-  
-  public final CompoundParameter depth = (CompoundParameter)
-    new CompoundParameter("Depth", 0.5)
-    .setDescription("Depth of the strobe effect");
-    
-  private final SawLFO basis = new SawLFO(1, 0, new FunctionalParameter() {
-    public double getValue() {
-      return 1000 / frequency.getValue();
-  }});
-        
-  public Strobe(LX lx) {
-    super(lx);
-    addParameter("mode", this.mode);
-    addParameter("frequency", this.frequency);
-    addParameter("depth", this.depth);
-    startModulator(basis);
-  }
-  
-  @Override
-  protected void onEnable() {
-    basis.setBasis(0).start();
-  }
-  
-  private LXWaveshape getWaveshape() {
-    switch (this.mode.getEnum()) {
-    case SIN: return LXWaveshape.SIN;
-    case TRI: return LXWaveshape.TRI;
-    case UP: return LXWaveshape.UP;
-    case DOWN: return LXWaveshape.DOWN;
-    case SQUARE: return LXWaveshape.SQUARE;
-    }
-    return LXWaveshape.SIN;
-  }
-  
-  private final float[] hsb = new float[3];
-  
-  @Override
-  public void run(double deltaMs, double amount) {
-    float amt = this.enabledDamped.getValuef() * this.depth.getValuef();
-    if (amt > 0) {
-      float strobef = basis.getValuef();
-      strobef = (float) getWaveshape().compute(strobef);
-      strobef = lerp(1, strobef, amt);
-      if (strobef < 1) {
-        if (strobef == 0) {
-          for (int i = 0; i < colors.length; ++i) {
-            colors[i] = LXColor.BLACK;
-          }
-        } else {
-          for (int i = 0; i < colors.length; ++i) {
-            LXColor.RGBtoHSB(colors[i], hsb);
-            hsb[2] *= strobef;
-            colors[i] = Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]);
-          }
-        }
+      int mask = (int) amt * 0x100;
+      for (int i = 0; i < this.colors.length; ++i) {
+        this.colors[i] = LXColor.multiply(this.colors[i], this.buffer[i], mask);
       }
     }
   }
@@ -143,9 +71,8 @@ public class LSD extends LXEffect {
     float sf = scale.getValuef() / 1000.;
     float rf = range.getValuef();
     for (LXPoint p :  model.points) {
-      LXColor.RGBtoHSB(colors[p.index], hsb);
       float h = rf * noise(sf*p.x, sf*p.y, sf*p.z + accum);
-      int c2 = LX.hsb(h * 360, 100, hsb[2]*100);
+      int c2 = LX.hsb(h * 360, 100, LXColor.b(colors[p.index]));
       if (amount < 1) {
         colors[p.index] = LXColor.lerp(colors[p.index], c2, amount);
       } else {

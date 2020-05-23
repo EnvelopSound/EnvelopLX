@@ -13,7 +13,37 @@ EnvelopModel getModel() {
   return null;
 }
 
-static abstract class EnvelopModel extends LXModel {
+private static class LegacyFixture {
+  private final List<LXPoint> points = new ArrayList<LXPoint>();
+  private final List<LXModel> children = new ArrayList<LXModel>();
+  
+  protected void addPoint(LXPoint p) {
+    this.points.add(p);
+  }
+  
+  protected void addChild(LXModel model) {
+    this.children.add(model);
+    for (LXPoint p : model.points) {
+      this.points.add(p);
+    }
+  }
+  
+  protected LXModel[] childArray() {
+    return this.children.toArray(new LXModel[0]);
+  }
+}
+
+private static abstract class LegacyModel extends LXModel {
+  
+  protected final LegacyFixture fixture;
+  
+  protected LegacyModel(LegacyFixture fixture) {
+    super(fixture.points, fixture.childArray());
+    this.fixture = fixture;
+  }
+}
+
+static abstract class EnvelopModel extends LegacyModel {
     
   static abstract class Config {
     
@@ -41,7 +71,7 @@ static abstract class EnvelopModel extends LXModel {
   
   protected EnvelopModel(Config config) {
     super(new Fixture(config));
-    Fixture f = (Fixture) fixtures.get(0);
+    Fixture f = (Fixture) this.fixture;
     columns = Collections.unmodifiableList(Arrays.asList(f.columns));
     final Arc[] arcs = new Arc[columns.size() * config.getArcs().length];
     final Rail[] rails = new Rail[columns.size() * config.getRails().length];
@@ -64,7 +94,7 @@ static abstract class EnvelopModel extends LXModel {
     this.railPoints = Collections.unmodifiableList(railPoints);
   }
   
-  private static class Fixture extends LXAbstractFixture {
+  private static class Fixture extends LegacyFixture {
     
     final Column[] columns;
     
@@ -77,7 +107,7 @@ static abstract class EnvelopModel extends LXModel {
         transform.translate(pv.x, 0, pv.y);
         float theta = atan2(pv.y, pv.x) - HALF_PI;
         transform.rotateY(-theta);
-        addPoints(columns[ci] = new Column(config, ci, transform, theta));
+        addChild(columns[ci] = new Column(config, ci, transform, theta));
         transform.pop();
         ++ci;
       }
@@ -201,7 +231,7 @@ static class Satellite extends EnvelopModel {
 }
 
 
-static class Column extends LXModel {
+static class Column extends LegacyModel {
   
   final static float SPEAKER_ANGLE = 22./180.*PI;
   
@@ -217,9 +247,9 @@ static class Column extends LXModel {
   
   Column(EnvelopModel.Config config, int index, LXTransform transform, float azimuth) {
     super(new Fixture(config, transform));
+    Fixture f = (Fixture) this.fixture;
     this.index = index;
     this.azimuth = azimuth;
-    Fixture f = (Fixture) fixtures.get(0);
     this.arcs = Collections.unmodifiableList(Arrays.asList(f.arcs));
     this.rails = Collections.unmodifiableList(Arrays.asList(f.rails));
     List<LXPoint> railPoints = new ArrayList<LXPoint>();
@@ -231,7 +261,7 @@ static class Column extends LXModel {
     this.railPoints = Collections.unmodifiableList(railPoints); 
   }
   
-  private static class Fixture extends LXAbstractFixture {
+  private static class Fixture extends LegacyFixture {
     final Arc[] arcs;
     final Rail[] rails;
     
@@ -245,7 +275,7 @@ static class Column extends LXModel {
       for (int i = 0; i < config.getRails().length; ++i) {
         EnvelopModel.Config.Rail rail = config.getRails()[i]; 
         transform.translate(RADIUS * rail.position.x, 0, RADIUS * rail.position.z);
-        addPoints(rails[i] = new Rail(rail, transform));
+        addChild(rails[i] = new Rail(rail, transform));
         transform.translate(-RADIUS * rail.position.x, 0, -RADIUS * rail.position.z);
       }
       
@@ -254,7 +284,7 @@ static class Column extends LXModel {
       for (int i = 0; i < config.getArcs().length; ++i) {
         float y = config.getArcs()[i] * HEIGHT;
         transform.translate(0, y, 0);      
-        addPoints(arcs[i] = new Arc(transform));
+        addChild(arcs[i] = new Arc(transform));
         transform.translate(0, -y, 0);
       }
       
@@ -263,7 +293,7 @@ static class Column extends LXModel {
   }
 }
 
-static class Rail extends LXModel {
+static class Rail extends LegacyModel {
   
   final static int LEFT = 0;
   final static int RIGHT = 1;
@@ -277,7 +307,7 @@ static class Rail extends LXModel {
     this.theta = atan2(transform.z(), transform.x());
   }
   
-  private static class Fixture extends LXAbstractFixture {
+  private static class Fixture extends LegacyFixture {
     Fixture(EnvelopModel.Config.Rail rail, LXTransform transform) {
       transform.push();
       transform.translate(0, rail.pointSpacing / 2., 0);
@@ -290,7 +320,7 @@ static class Rail extends LXModel {
   }
 }
 
-static class Arc extends LXModel {
+static class Arc extends LegacyModel {
   
   final static float RADIUS = Column.RADIUS;
   
@@ -304,7 +334,7 @@ static class Arc extends LXModel {
     super(new Fixture(transform));
   }
   
-  private static class Fixture extends LXAbstractFixture {
+  private static class Fixture extends LegacyFixture {
     Fixture(LXTransform transform) {
       transform.push();
       transform.rotateY(-POINT_ANGLE / 2.);
