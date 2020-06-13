@@ -426,6 +426,8 @@ class UIFloatingDiscs extends UIVisual {
  *
  */
 
+import java.nio.*;
+
 class UIMarbleTexture extends UIVisual {
 
   PShader marbleShader;
@@ -434,13 +436,13 @@ class UIMarbleTexture extends UIVisual {
 
   public final ColorParameter baseColor = 
     new ColorParameter("Base Color", rgbf(0.086f, 0.01f, 0.20f));
-    
+
   public final ColorParameter finalColor = 
     new ColorParameter("Final Color", rgbf(0.90f, 0.06f, 0.096f));
-    
+
   public final ColorParameter colorMixA = 
     new ColorParameter("Color Mix A", rgbf(0.06f, 0.96f, 0.99f));
-    
+
   public final ColorParameter colorMixB = 
     new ColorParameter("Color Mix B", rgbf(0.00f, 0.00f, 0.90f));    
 
@@ -490,7 +492,7 @@ class UIMarbleTexture extends UIVisual {
     addParameter("finalColor", this.finalColor);
     addParameter("colorMixA", this.colorMixA);
     addParameter("colorMixB", this.colorMixB);
-    
+
     addParameter("hurst_exponent", this.hurst_exponent);
     addParameter("size", this.size);
     addParameter("octaves", this.octaves);
@@ -525,15 +527,15 @@ class UIMarbleTexture extends UIVisual {
     setMarbleShaderColor("finalColor", this.finalColor);
     setMarbleShaderColor("colorMixA", this.colorMixA);
     setMarbleShaderColor("colorMixB", this.colorMixB);
-    
+
     noStroke();
     globe = createShape(SPHERE, 10000);
   }
-  
+
   private int rgbf(float r, float g, float b) {
     return LXColor.rgb((int) (r*255), (int) (g*255), (int) (b*255));
   }
-  
+
   private void setMarbleShaderColor(String attribute, ColorParameter clr) {
     int c = clr.getColor();
     float r = ((c & 0xff0000) >> 16) / 255f;
@@ -541,7 +543,7 @@ class UIMarbleTexture extends UIVisual {
     float b = (c & 0xff) / 255f;
     marbleShader.set(attribute, r, g, b);
   }
-  
+
   public String getName() {
     return "Marble Texture";
   }
@@ -596,5 +598,587 @@ class UIMarbleTexture extends UIVisual {
       pg.image(marbleGraphic, 0, 0, pg.width/48, pg.height/48);
       pg.pop();
     }
+  }
+}
+
+/*
+ * Waves effect in GLSL
+ * Copyright 2020 - Giovanni Muzio
+ * https://kesson.io
+ *
+ */
+
+class UIWaves extends UIVisual {
+
+  PShader shader;
+  PShader kaleida;
+  PShape box;
+  PGraphics offscreenShader;
+  PGraphics offscreenTexture;
+  float time = 0;
+
+  public final ColorParameter c1color = 
+    new ColorParameter("Channel 1", rgbf(0.9f, 0.2f, 0.2f));
+
+  public final ColorParameter c2color = 
+    new ColorParameter("Channel 2", rgbf(0.2f, 0.9f, 0.2f));
+
+  public final ColorParameter c3color = 
+    new ColorParameter("Channel 3", rgbf(0.2f, 0.2f, 0.9f));
+
+  public final ColorParameter c4color = 
+    new ColorParameter("Channel 4", rgbf(0.9f, 0.9f, 0.2f));
+
+  public final BoundedParameter c1opacity =
+    new BoundedParameter("C1 Opacity", 1.0f, 0.0f, 1.0f)
+    .setDescription("The sections of the kaleidoscope");
+
+  public final BoundedParameter c2opacity =
+    new BoundedParameter("C2 Opacity", 1.0f, 0.0f, 1.0f)
+    .setDescription("The sections of the kaleidoscope");
+
+  public final BoundedParameter c3opacity =
+    new BoundedParameter("C3 opacity", 1.0f, 0.0f, 1.0f)
+    .setDescription("The sections of the kaleidoscope");
+
+  public final BoundedParameter c4opacity =
+    new BoundedParameter("C4 Opacity", 1.0f, 0.0f, 1.0f)
+    .setDescription("The sections of the kaleidoscope");
+
+  public final BooleanParameter isVertical =
+    new BooleanParameter("Vertical", true)
+    .setDescription("Wheter the waves are vertical or horizontal");
+
+  public final BooleanParameter isElliptical =
+    new BooleanParameter("Elliptical", true)
+    .setDescription("Wheter the waves are elliptical");
+
+  public final BooleanParameter isMirrored =
+    new BooleanParameter("Mirroring", false)
+    .setDescription("If mirrored, the visual is specular on both X and Y axes");
+
+  public final BooleanParameter isKaleidoscope =
+    new BooleanParameter("Kaleidoscope", true)
+    .setDescription("The kaleidoscopic effect");
+
+  public final BoundedParameter sections =
+    new BoundedParameter("sections", 4.0f, 1.0f, 64.0f)
+    .setDescription("The sections of the kaleidoscope");
+
+  public UIWaves() {
+
+    addParameter("isVertical", this.isVertical);
+    addParameter("isElliptical", this.isElliptical);
+    addParameter("isMirrored", this.isMirrored);
+    addParameter("isKaleidoscope", this.isKaleidoscope);
+    addParameter("sections", this.sections);
+
+    addParameter("C1 Color", this.c1color);
+    addParameter("C2 Color", this.c2color);
+    addParameter("C3 Color", this.c3color);
+    addParameter("C4 Color", this.c4color);
+
+    addParameter("C1 Opacity", this.c1opacity);
+    addParameter("C2 Opacity", this.c2opacity);
+    addParameter("C3 Opacity", this.c3opacity);
+    addParameter("C4 Opacity", this.c4opacity);
+
+    offscreenShader = createGraphics(1000, 1000, P3D);
+    offscreenTexture = createGraphics(1000, 1000, P3D);
+
+    shader = loadShader("./data/shaders/WavesFrag.glsl");
+    shader.set("iTime", 0.0f);
+    shader.set("iResolution", float(width), float(height));
+
+    shader.set("isElliptical", this.isElliptical.isOn());
+    shader.set("isVertical", this.isVertical.isOn());
+
+    shader.set("channel1Volume", 1.0);
+    shader.set("channel2Volume", 1.0);
+    shader.set("channel3Volume", 1.0);
+    shader.set("channel4Volume", 1.0);
+
+    setShaderColor("channel1Color", this.c1color);
+    setShaderColor("channel2Color", this.c2color);
+    setShaderColor("channel3Color", this.c3color);
+    setShaderColor("channel4Color", this.c4color);
+
+    shader.set("channel1Opacity", this.c1opacity.getValuef());
+    shader.set("channel2Opacity", this.c2opacity.getValuef());
+    shader.set("channel3Opacity", this.c3opacity.getValuef());
+    shader.set("channel4Opacity", this.c4opacity.getValuef());
+
+    noStroke();
+    box = createShape(BOX, 500);
+
+    kaleida = loadShader("./data/shaders/KaleidaFilter.glsl");
+    kaleida.set("iResolution", float(width), float(height));
+    kaleida.set("iTime", 0.0f);
+    kaleida.set("sections", 4.0f);
+    kaleida.set("txTime", 0.0);
+    kaleida.set("offset", 0.5);
+
+    noStroke();
+    box = createShape(BOX, 10000);
+  }
+
+  private int rgbf(float r, float g, float b) {
+    return LXColor.rgb((int) (r*255), (int) (g*255), (int) (b*255));
+  }
+
+  private void setShaderColor(String attribute, ColorParameter clr) {
+    int c = clr.getColor();
+    float r = ((c & 0xff0000) >> 16) / 255f;
+    float g = ((c & 0xff00) >> 8) / 255f;
+    float b = (c & 0xff) / 255f;
+    shader.set(attribute, r, g, b);
+  }
+
+  public String getName() {
+    return "Waves";
+  }
+
+  public void beforeDraw(UI ui) {
+
+    kaleida.set("iTime", time);
+    kaleida.set("iResolution", float(width), float(height));
+    kaleida.set("sections", this.sections.getValuef());
+    kaleida.set("txTime", 0.0);
+    kaleida.set("offset", 0.5);
+
+    shader.set("iTime", time);
+    shader.set("iResolution", float(width), float(height));
+
+    shader.set("isElliptical", this.isElliptical.isOn());
+    shader.set("isVertical", this.isVertical.isOn());
+
+    println(envelop.decode.channels[1].getNormalizedf());
+
+    shader.set("channel1Volume", envelop.decode.channels[0].getNormalizedf());
+    shader.set("channel2Volume", envelop.decode.channels[1].getNormalizedf());
+    shader.set("channel3Volume", envelop.decode.channels[2].getNormalizedf());
+    shader.set("channel4Volume", envelop.decode.channels[3].getNormalizedf());
+
+    setShaderColor("channel1Color", this.c1color);
+    setShaderColor("channel2Color", this.c2color);
+    setShaderColor("channel3Color", this.c3color);
+    setShaderColor("channel4Color", this.c4color);
+
+    shader.set("channel1Opacity", this.c1opacity.getValuef());
+    shader.set("channel2Opacity", this.c2opacity.getValuef());
+    shader.set("channel3Opacity", this.c3opacity.getValuef());
+    shader.set("channel4Opacity", this.c4opacity.getValuef());
+
+    time += 0.01;
+
+    offscreenShader.beginDraw();
+    offscreenShader.background(0);
+    offscreenShader.noStroke();
+    offscreenShader.shader(shader);
+    offscreenShader.rect(0, 0, offscreenShader.width, offscreenShader.height);
+    offscreenShader.endDraw();
+
+    offscreenTexture.beginDraw();
+    offscreenTexture.background(0);
+    offscreenTexture.noStroke();
+
+    if (this.isKaleidoscope.isOn()) {
+
+      offscreenTexture.push();
+      offscreenTexture.image(offscreenShader, 0, 0, offscreenTexture.width/1, offscreenTexture.height/1);
+      offscreenTexture.pop();
+
+      offscreenTexture.filter(kaleida);
+    } else {
+
+      if (!this.isMirrored.isOn()) {
+
+        offscreenTexture.push();
+        offscreenTexture.image(offscreenShader, 0, 0, offscreenTexture.width, offscreenTexture.height);
+        offscreenTexture.pop();
+      } else {
+
+        int w_ = offscreenTexture.width/2;
+        int h_ = offscreenTexture.height/2;
+
+        offscreenTexture.push();
+        offscreenTexture.image(offscreenShader, 0, 0, w_, h_);
+        offscreenTexture.pop();
+
+        offscreenTexture.push();
+        offscreenTexture.translate(offscreenTexture.width, 0);
+        offscreenTexture.scale(-1, 1);
+        offscreenTexture.image(offscreenShader, 0, 0, w_, h_);
+        offscreenTexture.pop();
+
+        offscreenTexture.push();
+        offscreenTexture.translate(offscreenTexture.width, offscreenTexture.height);
+        offscreenTexture.scale(-1, -1);
+        offscreenTexture.image(offscreenShader, 0, 0, w_, h_);
+        offscreenTexture.pop();
+
+        offscreenTexture.push();
+        offscreenTexture.translate(0, offscreenTexture.height);
+        offscreenTexture.scale(1, -1);
+        offscreenTexture.image(offscreenShader, 0, 0, w_, h_);
+        offscreenTexture.pop();
+      }
+    }
+
+    offscreenTexture.endDraw();
+
+    box.setTexture(offscreenTexture);
+  }
+
+  public void onDraw(UI ui, PGraphics pg) {
+
+    pg.push();
+    pg.shape(box);
+    pg.pop();
+  }
+}
+
+/*
+ * Moire cloud
+ * Copyright 2020 - Giovanni Muzio
+ * https://kesson.io
+ *
+ */
+
+class UIMoire extends UIVisual {
+
+  private class Geometry {
+    float[] glVertex;
+    float[] glExternal;
+    float[] glNoise;
+
+    int vertLoc;
+    int externalLoc;
+    int noiseLoc;
+
+    PGL pgl;
+
+    PShader sh;
+
+    FloatBuffer pointBuffer;
+    FloatBuffer externalBuffer;
+    FloatBuffer noiseBuffer;
+
+    int vertexVboId;
+    int externalVboId;
+    int noiseVboId;
+
+    int totalloop;
+
+    Geometry(PGraphics pg, int total) {      
+      totalloop = (total * total) * 2;
+      this.sh = pg.loadShader("./data/shaders/hyperkosmo/fragment.glsl", "./data/shaders/hyperkosmo/vertex.glsl");
+
+      this.glVertex = new float[totalloop*3];
+      this.glExternal = new float[totalloop];
+      this.glNoise = new float[totalloop*2];
+
+      PGL pgl = pg.beginPGL();
+      this.sh.bind();
+      this.sh.set("time", millis() / 1000.0);
+      this.sh.set("radius", 0.0);
+      this.sh.set("eRadius", 0.0);
+      this.sh.set("color", 1.0f, 1.0f, 1.0f);
+
+      this.vertLoc = pgl.getAttribLocation(sh.glProgram, "vertex");
+      this.externalLoc = pgl.getAttribLocation(sh.glProgram, "isExternal");
+      this.noiseLoc = pgl.getAttribLocation(sh.glProgram, "noise");
+
+      IntBuffer intBuffer = IntBuffer.allocate(3);
+
+      pgl.genBuffers(3, intBuffer);
+
+      this.vertexVboId = intBuffer.get(0);
+      this.externalVboId = intBuffer.get(1);
+      this.noiseVboId = intBuffer.get(2);
+
+      this.sh.unbind();
+      pg.endPGL();
+
+      float nx = 0;
+      float ny = 0;
+
+      int pIndex = 0;
+      int rIndex = 0;
+      int nIndex = 0;
+
+      for (int i = 0; i < total; i++) {
+
+        float lat = map(i, 0, total-1, 0, PI);
+
+        nx = sin(lat);
+
+        for (int j = 0; j < total; j++) {
+
+          float lon = map(j, 0, total-1, 0, TWO_PI);
+
+          ny = sin(lon);
+
+          this.glVertex[pIndex + 0] = sin(lat) * cos(lon);
+          this.glVertex[pIndex + 1] = sin(lat) * sin(lon);
+          this.glVertex[pIndex + 2] = cos(lat);
+          this.glVertex[pIndex + 3] = sin(lat) * cos(lon);
+          this.glVertex[pIndex + 4] = sin(lat) * sin(lon);
+          this.glVertex[pIndex + 5] = cos(lat);
+          pIndex += 6;
+
+          if (rIndex%2 == 0) this.glExternal[rIndex] = 0.0;
+          else this.glExternal[rIndex] = 1.0;
+          rIndex++;
+          if (rIndex%2 == 0) this.glExternal[rIndex] = 0.0;
+          else this.glExternal[rIndex] = 1.0;
+          rIndex++;
+
+          glNoise[nIndex + 0] = nx;
+          glNoise[nIndex + 1] = ny;
+          glNoise[nIndex + 2] = nx;
+          glNoise[nIndex + 3] = ny;
+          nIndex += 4;
+        }
+      }
+
+      pointBuffer = this.allocateDirectFloatBuffer(glVertex.length*2);
+      externalBuffer = this.allocateDirectFloatBuffer(glExternal.length);
+      noiseBuffer = this.allocateDirectFloatBuffer(glNoise.length);
+
+      pointBuffer.rewind();
+      pointBuffer.put(glVertex);
+      pointBuffer.rewind();
+
+      externalBuffer.rewind();
+      externalBuffer.put(glExternal);
+      externalBuffer.rewind();
+
+      noiseBuffer.rewind();
+      noiseBuffer.put(glNoise);
+      noiseBuffer.rewind();
+    }
+
+    public void setColor(ColorParameter clr) {
+      int c = clr.getColor();
+      float r = ((c & 0xff0000) >> 16) / 255f;
+      float g = ((c & 0xff00) >> 8) / 255f;
+      float b = (c & 0xff) / 255f;
+      this.sh.set("color", r, g, b);
+    }
+
+    public void setAlpha(float v) {
+      this.sh.set("alpha", v);
+    }
+
+    public void setRadius(float v) {
+      this.sh.set("radius", v);
+      this.sh.set("eRadius", v*5);
+    }
+
+    public void run(PGraphics pg) {
+
+      pgl = pg.beginPGL();
+
+      this.sh.set("time", millis() / 1000.0);
+
+      this.sh.bind();
+
+      //
+      /* VERTEX */
+      pgl.enableVertexAttribArray(vertLoc);
+      int vertData = glVertex.length;
+      pgl.bindBuffer(PGL.ARRAY_BUFFER, vertexVboId);
+      pgl.bufferData(PGL.ARRAY_BUFFER, Float.BYTES * vertData, pointBuffer, PGL.DYNAMIC_DRAW);
+      pgl.vertexAttribPointer(vertLoc, 3, PGL.FLOAT, false, Float.BYTES * 3, 0 );
+
+      //
+      /* RADIUS */
+      pgl.enableVertexAttribArray(externalLoc);
+      int externalData = glExternal.length;
+      pgl.bindBuffer(PGL.ARRAY_BUFFER, externalVboId);
+      pgl.bufferData(PGL.ARRAY_BUFFER, Float.BYTES * externalData, externalBuffer, PGL.DYNAMIC_DRAW);
+      pgl.vertexAttribPointer(externalLoc, 1, PGL.FLOAT, false, Float.BYTES, 0 );
+
+      //
+      /* NOISE */
+      pgl.enableVertexAttribArray(noiseLoc);
+      int noiseData = glNoise.length;
+      pgl.bindBuffer(PGL.ARRAY_BUFFER, noiseVboId);
+      pgl.bufferData(PGL.ARRAY_BUFFER, Float.BYTES * noiseData, noiseBuffer, PGL.DYNAMIC_DRAW);
+      pgl.vertexAttribPointer(noiseLoc, 2, PGL.FLOAT, false, Float.BYTES * 2, 0 );
+
+      //
+      /* DRAW */
+      pgl.bindBuffer(PGL.ARRAY_BUFFER, 0);
+      pgl.drawArrays(PGL.LINES, 0, vertData);
+
+      pgl.disableVertexAttribArray(vertLoc);
+      pgl.disableVertexAttribArray(externalLoc);
+      pgl.disableVertexAttribArray(noiseLoc);
+
+      pgl.bindBuffer(PGL.ARRAY_BUFFER, 0);
+
+      this.sh.unbind();
+      pg.endPGL();
+    }
+
+    private FloatBuffer allocateDirectFloatBuffer(int n) {
+      return ByteBuffer.allocateDirect(n * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
+    }
+  }
+
+  public final ColorParameter nColor = 
+    new ColorParameter("Color", rgbf(0.9f, 0.2f, 0.2f));
+
+  public final BoundedParameter alpha =
+    new BoundedParameter("alpha", 0.25f, 0.0f, 1.0f)
+    .setDescription("Alpha channel of the moire shape");
+
+  public final BoundedParameter radius =
+    new BoundedParameter("radius", 1000.0f, 250.0f, 5000.0f)
+    .setDescription("The radius of the globe");
+
+  public String getName() {
+    return "Moire";
+  }
+
+  private int rgbf(float r, float g, float b) {
+    return LXColor.rgb((int) (r*255), (int) (g*255), (int) (b*255));
+  }
+
+  Geometry geometry;
+  PShape environment;
+
+  public UIMoire() {
+    addParameter("Color", this.nColor);
+    addParameter("Alpha", this.alpha);
+    addParameter("Radius", this.radius);
+    noStroke();
+    fill(0);
+    this.environment = createShape(SPHERE, 10000);
+  }
+
+  public void beforeDraw(UI ui) {
+    if (this.geometry != null) {
+      this.geometry.setColor(this.nColor);
+      this.geometry.setAlpha(this.alpha.getValuef());
+      this.geometry.setRadius(this.radius.getValuef());
+    }
+  }
+
+  public void onDraw(UI ui, PGraphics pg) {
+
+    if (this.geometry == null) this.geometry = new Geometry(pg, 500);
+
+    pg.push();
+    pg.shape(environment);
+    pg.blendMode(ADD);
+    this.geometry.run(pg);
+    pg.pop();
+  }
+}
+
+
+
+/*
+ * Worley Texture effect in GLSL
+ * Copyright 2020 - Giovanni Muzio
+ * https://kesson.io
+ *
+ */
+
+class UIWorleyBulb extends UIVisual {
+
+  private PShader shader;
+  private PShape globe;
+  private float time;
+
+  public final ColorParameter baseColor = 
+    new ColorParameter("Color", rgbf(0.086f, 0.01f, 0.20f));  
+
+  public final BoundedParameter mode =
+    new BoundedParameter("Mode", 0.0f, 0.0f, 2.0f)
+    .setDescription("Draw mode");
+
+  public final BoundedParameter amount =
+    new BoundedParameter("Amount", 1.0f, 1.0f, 16.0f)
+    .setDescription("The size of the cells - bigger numbers -> smaller cells");
+
+  public final BoundedParameter rainbowAmount =
+    new BoundedParameter("colorAmount", 0.05, 0.0, 1.0)
+    .setDescription("The saturation when in rainbow mode");
+
+  public final BoundedParameter alpha =
+    new BoundedParameter("Alpha", 1.0f, 0.0f, 1.0f) 
+    .setDescription("Alpha of the object");  
+
+  public final BooleanParameter isRainbow =
+    new BooleanParameter("Rainbow mode", false)
+    .setDescription("Wether the rainbow color is applied to the globe");
+
+  public final BooleanParameter negative =
+    new BooleanParameter("Negative", false)
+    .setDescription("Is the shader in negative mode?");
+
+  public final BoundedParameter speed =
+    new BoundedParameter("Speed", 0.01f, 0.01f, 0.1f) 
+    .setDescription("Alpha of the object");  
+
+  public UIWorleyBulb() {
+    addParameter("Speed", this.speed);
+    addParameter("Color", this.baseColor);
+    addParameter("Mode", this.mode);
+    addParameter("Amount", this.amount);
+    addParameter("Alpha", this.alpha);
+    addParameter("Negative", this.negative);
+    addParameter("isRainbow", this.isRainbow);
+    addParameter("Rainbow Amount", this.rainbowAmount);
+
+    this.shader = loadShader("./data/shaders/WorleyBulb/fragment.glsl", "./data/shaders/WorleyBulb/vertex.glsl");
+
+    noStroke();
+    this.globe = createShape(SPHERE, 1);
+
+    this.time = 0.0;
+  }
+
+  private int rgbf(float r, float g, float b) {
+    return LXColor.rgb((int) (r*255), (int) (g*255), (int) (b*255));
+  }
+
+  private void setColor(ColorParameter clr) {
+    int c = clr.getColor();
+    float r = ((c & 0xff0000) >> 16) / 255f;
+    float g = ((c & 0xff00) >> 8) / 255f;
+    float b = (c & 0xff) / 255f;
+    this.shader.set("inputColor", r, g, b);
+  }
+
+  public String getName() {
+    return "Worley Bulb";
+  }
+
+  public void beforeDraw(UI ui) {
+    this.shader.set("iTime", this.time);
+    this.shader.set("iResolution", float(width), float(height));
+    this.shader.set("mode", int(this.mode.getValuef()));
+    this.shader.set("amount", this.amount.getValuef());
+    this.shader.set("rainbowAmount", this.rainbowAmount.getValuef());
+    this.shader.set("alpha", this.alpha.getValuef());
+    this.shader.set("rainbow", this.isRainbow.isOn());
+    this.shader.set("negative", this.negative.isOn());
+    this.setColor(this.baseColor);
+
+    this.time += this.speed.getValuef();
+  }
+
+  public void onDraw(UI ui, PGraphics pg) {
+    pg.push();
+    pg.shader(this.shader);
+    pg.scale(1500);
+    pg.shape(this.globe);
+    pg.pop();
+    pg.resetShader();
   }
 }

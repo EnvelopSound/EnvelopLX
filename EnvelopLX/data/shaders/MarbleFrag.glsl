@@ -15,8 +15,8 @@
 precision mediump float;
 #endif
 
-uniform vec2 resolution;        // The screen resolution
-uniform float time;             // time
+uniform vec2 iResolution;        // The screen resolution
+uniform float iTime;             // time
 uniform float size;             // The amount of fBM
 uniform float amount;           // The details of fBM
 uniform int num_octaves;        // The num octaves, another parameter for the details
@@ -99,18 +99,18 @@ float fbm( in vec2 x) {
 }
 
 void main(void) {
-    vec2 st = (gl_FragCoord.xy/resolution.xy)*size;
-    vec2 uv = gl_FragCoord.xy / resolution.xy;
+    vec2 st = (gl_FragCoord.xy/iResolution.xy)*size;
+    vec2 uv = gl_FragCoord.xy / iResolution.xy;
 
     vec3 color = vec3(0.0);
 
     // First layer of warping
-    vec2 q = vec2(fbm( st + vec2(0.01)*time ),
+    vec2 q = vec2(fbm( st + vec2(0.01)*iTime ),
              fbm( st + vec2(5.2,1.3) ) );
 
     // Second layer of warping
-    vec2 r = vec2(fbm( st + amount * q + vec2(1.7, 9.2) + warping_speed_1 * time ),
-             fbm( st + amount * q + vec2(8.3, 2.8) + warping_speed_2 * time ) );
+    vec2 r = vec2(fbm( st + amount * q + vec2(1.7, 9.2) + warping_speed_1 * iTime ),
+             fbm( st + amount * q + vec2(8.3, 2.8) + warping_speed_2 * iTime ) );
 
     float f = fbm(st + r);
 

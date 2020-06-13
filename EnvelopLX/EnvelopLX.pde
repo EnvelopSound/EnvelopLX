@@ -311,6 +311,15 @@ public class Envelop extends LXRunnableComponent {
       
       // The marble texture visual
       addVisual(new UIMarbleTexture());
+      
+      // Waves GLSL visual
+      addVisual(new UIWaves());
+      
+      // Moire Cloud visual
+      addVisual(new UIMoire());
+      
+      // Worley texture visual
+      addVisual(new UIWorleyBulb());
     }
     
     protected void beforeDraw() {
