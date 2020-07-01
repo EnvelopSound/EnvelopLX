@@ -29,7 +29,6 @@ uniform vec3 colorMixB;         // The second color to mix in the warping
 uniform vec3 finalColor;        // The last color to mix the warping
 uniform float opacity;          // The opacity of the shader
 
-// #define NUM_OCTAVES 8
 #define PI 3.14159265359
 
 //	<https://www.shadertoy.com/view/4dS3Wd>
@@ -65,25 +64,6 @@ float noise(vec2 x) {
 	vec2 u = f * f * (3.0 - 2.0 * f);
 	return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
 }
-
-// This one has non-ideal tiling properties that I'm still tuning
-float noise(vec3 x) {
-	const vec3 step = vec3(110, 241, 171);
-
-	vec3 i = floor(x);
-	vec3 f = fract(x);
- 
-	// For performance, compute the base input to a 1D hash from the integer part of the argument and the 
-	// incremental change to the 1D based on the 3D -> 1D wrapping
-    float n = dot(i, step);
-
-	vec3 u = f * f * (3.0 - 2.0 * f);
-	return mix(mix(mix( hash(n + dot(step, vec3(0, 0, 0))), hash(n + dot(step, vec3(1, 0, 0))), u.x),
-                   mix( hash(n + dot(step, vec3(0, 1, 0))), hash(n + dot(step, vec3(1, 1, 0))), u.x), u.y),
-               mix(mix( hash(n + dot(step, vec3(0, 0, 1))), hash(n + dot(step, vec3(1, 0, 1))), u.x),
-                   mix( hash(n + dot(step, vec3(0, 1, 1))), hash(n + dot(step, vec3(1, 1, 1))), u.x), u.y), u.z);
-}
-
 
 float fbm( in vec2 x) {    
     // float G = exp2(-H);
