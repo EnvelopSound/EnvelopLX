@@ -537,6 +537,8 @@ class UIMarbleTexture extends UIVisual {
 
     noStroke();
     globe = createShape(SPHERE, 10000);
+    
+    setVisible(false);
   }
 
   private int rgbf(float r, float g, float b) {
@@ -847,6 +849,8 @@ class UIWaves extends UIVisual {
 
     noStroke();
     box = createShape(BOX, 10000);
+    
+    setVisible(false);
   }
 
   private int rgbf(float r, float g, float b) {
@@ -1251,6 +1255,8 @@ class UIMoire extends UIVisual {
     noStroke();
     fill(0);
     this.environment = createShape(SPHERE, 10000);
+    
+    setVisible(false);
   }
 
   public void beforeDraw(UI ui) {
@@ -1351,6 +1357,8 @@ class UIWorleyBulb extends UIVisual {
     this.globe = createShape(SPHERE, 1);
 
     this.time = 0.0;
+    
+    setVisible(false);
   }
 
   private int rgbf(float r, float g, float b) {
@@ -1848,6 +1856,8 @@ class UISeastorm extends UIVisual {
     addParameter("Alpha", this.alpha);
     addParameter("Colorama", this.isColorama);
     addParameter("Mirror", this.isMirror);
+    
+    setVisible(false);
   }
 
   public void beforeDraw(UI ui) {
@@ -1884,7 +1894,7 @@ class UISeastorm extends UIVisual {
 
 
 ///*
-// * Moire cloud
+// * AI Env
 // * Copyright 2020 - Giovanni Muzio
 // * https://kesson.io
 // *
@@ -2108,6 +2118,8 @@ class UIArtificialEnvironment extends UIVisual {
     addParameter("noiseDepth", this.noiseDepth);
     addParameter("Radius", this.radius);
     addParameter("Sound Reactive", this.soundReactive);
+    
+    setVisible(false);
   }
 
   public void beforeDraw(UI ui) {
@@ -2239,6 +2251,8 @@ class UIDepths extends UIVisual {
 
     noStroke();
     globe = createShape(BOX, 10000);
+    
+    setVisible(false);
   }
 
   private void TexturedCube(PGraphics pg, PGraphics tex, int p) {
@@ -2493,6 +2507,8 @@ class UIStarfield extends UIVisual {
     color c = color(h, saturation, brightness);
     colorMode(RGB, 1.0);
     shader.set("colorMixA", red(c), green(c), blue(c));
+    
+    setVisible(false);
   }
 
   // A method to show the offscreen shader
