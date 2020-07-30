@@ -26,7 +26,7 @@ void main() {
     float  x = (uv.x + 4.0) * (uv.y + 4.0) * (iTime * 10.0);
     vec3  grain = vec3(mod((mod(x, 13.0) + 1.0) * (mod(x, 123.0) + 1.0), 0.01) - 0.005) * strength;
 
-    const int  mSize = 7;
+    const int  mSize = 11;
     const int  kSize = (mSize - 1) / 2;
     float  kernel[mSize];
     vec3  final_colour = vec3(0.0);

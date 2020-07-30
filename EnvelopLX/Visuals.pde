@@ -537,7 +537,7 @@ class UIMarbleTexture extends UIVisual {
 
     noStroke();
     globe = createShape(SPHERE, 10000);
-    
+
     setVisible(false);
   }
 
@@ -690,13 +690,13 @@ class UIMarbleTexture extends UIVisual {
 
       offscreen2.endDraw();
     }
-    
+
     // Apply the texture to the globe only if the mirroring is deactivated
     if (!this.isMirrored.isOn()) globe.setTexture(offscreen);
   }
 
   public void onDraw(UI ui, PGraphics pg) {
-    
+
     // Choose is using the shader as environmental map or as texture on top of enerything else
     // And if mirrored, show it on a cube rather than a globe
     if (this.isEnvironmentalMap.isOn()) {
@@ -735,6 +735,7 @@ class UIWaves extends UIVisual {
   PShader shader;
   PShader kaleida;
   PShape box;
+  PShape globe;
   PGraphics offscreenShader;
   PGraphics offscreenTexture;
   float time = 0;
@@ -787,6 +788,10 @@ class UIWaves extends UIVisual {
     new BooleanParameter("Sound Reactive", true)
     .setDescription("Is it sound reactive?");
 
+  public final BooleanParameter isEnvironmentalMap =
+    new BooleanParameter("Environmental Map", true)
+    .setDescription("Either it is as envmap (spherical) or as a cubemap (box)");
+
   public final BoundedParameter sections =
     new BoundedParameter("sections", 4.0f, 1.0f, 64.0f)
     .setDescription("The sections of the kaleidoscope");
@@ -797,6 +802,7 @@ class UIWaves extends UIVisual {
     addParameter("isElliptical", this.isElliptical);
     addParameter("isMirrored", this.isMirrored);
     addParameter("isKaleidoscope", this.isKaleidoscope);
+    addParameter("isEnvMap", this.isEnvironmentalMap);
 
     addParameter("Sound Reactive", this.isSoundReactive);
 
@@ -837,9 +843,6 @@ class UIWaves extends UIVisual {
     shader.set("channel3Opacity", this.c3opacity.getValuef());
     shader.set("channel4Opacity", this.c4opacity.getValuef());
 
-    noStroke();
-    box = createShape(BOX, 500);
-
     kaleida = loadShader("./data/shaders/KaleidaFilter.glsl");
     kaleida.set("iResolution", float(width), float(height));
     kaleida.set("iTime", 0.0f);
@@ -849,7 +852,8 @@ class UIWaves extends UIVisual {
 
     noStroke();
     box = createShape(BOX, 10000);
-    
+    globe = createShape(SPHERE, 10000);
+
     setVisible(false);
   }
 
@@ -960,14 +964,21 @@ class UIWaves extends UIVisual {
 
     offscreenTexture.endDraw();
 
-    box.setTexture(offscreenTexture);
+    if (this.isEnvironmentalMap.isOn()) globe.setTexture(offscreenTexture);
+    else box.setTexture(offscreenTexture);
   }
 
   public void onDraw(UI ui, PGraphics pg) {
 
-    pg.push();
-    pg.shape(box);
-    pg.pop();
+    if (this.isEnvironmentalMap.isOn()) {
+      pg.push();
+      pg.shape(globe);
+      pg.pop();
+    } else {
+      pg.push();
+      pg.shape(globe);
+      pg.pop();
+    }
   }
 }
 
@@ -1137,12 +1148,15 @@ class UIMoire extends UIVisual {
       this.sh.set("radius", r);
       this.sh.set("eRadius", r * e);
     }
+    
+    public void setTime(float f) {
+       float normalizedTime = millis() / 1000.0;  // Normalize time from millis to seconds
+       this.sh.set("time", normalizedTime * f);
+    }
 
     public void run(PGraphics pg) {
 
       pgl = pg.beginPGL();
-
-      this.sh.set("time", millis() / 1000.0);
 
       this.sh.bind();
 
@@ -1205,6 +1219,10 @@ class UIMoire extends UIVisual {
     new BoundedParameter("Size", 5.0f, 0.0f, 20.0f)
     .setDescription("The size of the globe");
 
+  public final BoundedParameter speed =
+    new BoundedParameter("Speed", 0.25f, 0.1f, 2.0f)
+    .setDescription("The speed of the globe");
+
   public final BooleanParameter isColorama =
     new BooleanParameter("Colorama", false)
     .setDescription("Change the color over time");
@@ -1218,7 +1236,7 @@ class UIMoire extends UIVisual {
     .setDescription("Oscillate the value of the radius over time");
 
   public final BoundedParameter oscillatingFrequency =
-    new BoundedParameter("Radius frequency", 10.0f, 0.5f, 60.0f)
+    new BoundedParameter("Radius frequency", 10.0f, 0.1f, 300.0f)
     .setDescription("Minimum value of radius when changing over time");
 
   public final BoundedParameter radiusMin =
@@ -1245,6 +1263,7 @@ class UIMoire extends UIVisual {
     addParameter("Alpha", this.alpha);
     addParameter("Radius", this.radius);
     addParameter("Size", this.size);
+    addParameter("Speed", this.speed);
     addParameter("Colorama", this.isColorama);
     addParameter("Colorama Time", this.coloramaTime);
     addParameter("Oscillating Radius", this.isOscillatingRadius);
@@ -1255,7 +1274,7 @@ class UIMoire extends UIVisual {
     noStroke();
     fill(0);
     this.environment = createShape(SPHERE, 10000);
-    
+
     setVisible(false);
   }
 
@@ -1263,10 +1282,12 @@ class UIMoire extends UIVisual {
     float alpha = this.alpha.getValuef();
     float radius = this.radius.getValuef();
     float size = this.size.getValuef();
+    float speed = this.speed.getValuef();
     if (this.geometry != null) {
       this.geometry.setColor(this.nColor);
       this.geometry.setAlpha(alpha);
       this.geometry.setRadius(radius, size);
+      this.geometry.setTime(speed);
       // If the colorama effect is on, change it over time
       if (this.isColorama.isOn()) {
         float f = this.coloramaTime.getValuef(); // Frequency in seconds
@@ -1357,7 +1378,7 @@ class UIWorleyBulb extends UIVisual {
     this.globe = createShape(SPHERE, 1);
 
     this.time = 0.0;
-    
+
     setVisible(false);
   }
 
@@ -1856,7 +1877,7 @@ class UISeastorm extends UIVisual {
     addParameter("Alpha", this.alpha);
     addParameter("Colorama", this.isColorama);
     addParameter("Mirror", this.isMirror);
-    
+
     setVisible(false);
   }
 
@@ -1879,15 +1900,14 @@ class UISeastorm extends UIVisual {
   }
 
   public void onDraw(UI ui, PGraphics pg) {
-    
+
     pg.push();
 
     if (this.geometry == null) this.geometry = new Geometry(pg, 100000);
 
     geometry.display(pg, this.isMirror.isOn());
-    
+
     pg.pop();
-    
   }
 }
 
@@ -2118,7 +2138,7 @@ class UIArtificialEnvironment extends UIVisual {
     addParameter("noiseDepth", this.noiseDepth);
     addParameter("Radius", this.radius);
     addParameter("Sound Reactive", this.soundReactive);
-    
+
     setVisible(false);
   }
 
@@ -2166,7 +2186,7 @@ class UIDepths extends UIVisual {
   PShape globe;
 
   public final BoundedParameter size =
-    new BoundedParameter("Size", 1.345, 0.1f, 2.0f)
+    new BoundedParameter("Size", 0.5, 0.1f, 2.0f)
     .setDescription("The size of the rocks");
 
   public final BoundedParameter speed1 =
@@ -2251,7 +2271,7 @@ class UIDepths extends UIVisual {
 
     noStroke();
     globe = createShape(BOX, 10000);
-    
+
     setVisible(false);
   }
 
@@ -2340,6 +2360,7 @@ class UIDepths extends UIVisual {
   }
 
   public void beforeDraw(UI ui) {
+    
     // Get the parameters to set the uniforms in the shader
     float size = this.size.getValuef();
     float speed1 = this.speed1.getValuef();
@@ -2507,7 +2528,7 @@ class UIStarfield extends UIVisual {
     color c = color(h, saturation, brightness);
     colorMode(RGB, 1.0);
     shader.set("colorMixA", red(c), green(c), blue(c));
-    
+
     setVisible(false);
   }
 

@@ -107,12 +107,12 @@ vec3 bg(vec3 rd) {
     float t = time * 0.2;
     
     float y = clamp(smoothstep(0.3, 1.0, rd.y * 0.5 + 0.5), 0.1, 1.0);
-    col += y * waterColor * 6.0;
+    // col += y * waterColor * 6.0;
     
     float a = atan(rd.x, rd.z);
-    float flares = 0.7 * sin(a*20.+t)*sin(a*2.-t)*sin(a*6.);
-    flares *= smoothstep(.0, 1.0, y);
-    col += flares;
+    // float flares = 0.7 * sin(a*20.+t)*sin(a*2.-t)*sin(a*6.);
+    // flares *= smoothstep(.0, 1.0, y);
+    // col += flares;
     col = max(col, 0.);    
     return col;
 }
@@ -160,9 +160,9 @@ void main() {
         
         p = transform(p);
         
-    	float dif = dot(n, normalize(vec3(0.0,0.0,1.0)))*.5+.5;
+    	float dif = dot(n, normalize(vec3(1.0,1.0,1.0)))*.5+.5;
         col *= dif;
-    	col += dif;
+    	col += dif*0.2;
         
         float b = sdGyroid(p, 10.798, 0.03, 0.3);
         col *= smoothstep(-0.05, 0.1, b);
