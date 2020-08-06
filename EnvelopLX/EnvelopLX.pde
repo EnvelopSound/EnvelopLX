@@ -332,6 +332,8 @@ public class Envelop extends LXRunnableComponent {
       
        //Seastorm based visual
       addVisual(new UISeastorm());
+      
+      addVisual(new UIDark());
     }
     
     protected void beforeDraw() {

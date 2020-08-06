@@ -1148,10 +1148,10 @@ class UIMoire extends UIVisual {
       this.sh.set("radius", r);
       this.sh.set("eRadius", r * e);
     }
-    
+
     public void setTime(float f) {
-       float normalizedTime = millis() / 1000.0;  // Normalize time from millis to seconds
-       this.sh.set("time", normalizedTime * f);
+      float normalizedTime = millis() / 1000.0;  // Normalize time from millis to seconds
+      this.sh.set("time", normalizedTime * f);
     }
 
     public void run(PGraphics pg) {
@@ -2169,7 +2169,7 @@ class UIArtificialEnvironment extends UIVisual {
 
 
 /*
- * Depths effect in GLSL
+ * Timeless Depths artwork in GLSL
  * Copyright 2020 - Giovanni Muzio
  * https://kesson.io
  *
@@ -2360,7 +2360,7 @@ class UIDepths extends UIVisual {
   }
 
   public void beforeDraw(UI ui) {
-    
+
     // Get the parameters to set the uniforms in the shader
     float size = this.size.getValuef();
     float speed1 = this.speed1.getValuef();
@@ -2698,6 +2698,257 @@ class UIStarfield extends UIVisual {
       pg.pop();
     } else {
       TexturedCube(pg, offscreen2, 10000);
+    }
+  }
+}
+
+
+
+
+
+
+
+/*
+ * Timeless Depths artwork in GLSL
+ * Copyright 2020 - Giovanni Muzio
+ * https://kesson.io
+ *
+ * Port from Timeless Depths
+ * Copyright 2020 - Giovanni Muzio
+ * https://www.shadertoy.com/view/ttlyWB
+ *
+ */
+
+class UIDark extends UIVisual {
+
+  PShader shader;
+  PShader sblur;
+  PShader kifs;
+  PGraphics offscreen1, offscreen2;
+  PShape globe;
+  PImage texture;
+
+  public final ColorParameter colorA = 
+    new ColorParameter("Color A", rgbf(0.06f, 0.96f, 0.99f));
+
+  public final ColorParameter colorB = 
+    new ColorParameter("Color B", rgbf(0.90f, 0.06f, 0.096f));  
+
+  public final BoundedParameter brightness =
+    new BoundedParameter("Brightness", 0.75f, 0.25f, 0.9f);
+
+  public final BoundedParameter size =
+    new BoundedParameter("Size", 4.0f, 1.0f, 16.0f)
+    .setDescription("The size of the effect");
+
+  public final BoundedParameter warping_speed_1 =
+    new BoundedParameter("Warping Speed 1", 0.05f, 0.0f, 1.0f) 
+    .setDescription("Speed of the first warping domain effect");  
+
+  public final BoundedParameter warping_speed_2 =
+    new BoundedParameter("Warping Speed 2", 0.065f, 0.0f, 1.0f) 
+    .setDescription("Second speed of the warping domain effect");
+
+  public final BoundedParameter fractalSize =
+    new BoundedParameter("Fractal Size", 1.5f, 0.5f, 8.0f) 
+    .setDescription("The size of the fractal");
+
+  public final BoundedParameter fractalSpeed =
+    new BoundedParameter("Fractal Size", 0.1f, 0.f, 0.5f) 
+    .setDescription("The size of the fractal");
+
+  public final BoundedParameter fractalEvolution =
+    new BoundedParameter("Evolution Speed", 0.1f, 0.0f, 0.5f) 
+    .setDescription("Evolution Speed of the fractal");
+
+  public final BooleanParameter isEnvironmentalMap =
+    new BooleanParameter("Environmental Map", true)
+    .setDescription("Wheter the shader is applied as environmental map");
+
+  public UIDark() {
+
+    // Offscreen PGraphics
+    int pgw = 1080, pgh = 1080;
+    offscreen1 = createGraphics(pgw, pgh, P3D);
+    offscreen2 = createGraphics(pgw, pgh, P3D);
+
+    // UI controls
+    addParameter("environmental Map", this.isEnvironmentalMap);
+    addParameter("ColorA", this.colorA);
+    addParameter("ColorB", this.colorB);
+    addParameter("brightness", this.brightness);
+    addParameter("size", this.size);
+    addParameter("warping speed 1", this.warping_speed_1);
+    addParameter("warping speed 2", this.warping_speed_2);
+    addParameter("Fractal Size", this.fractalSize);
+    addParameter("Fractal Speed", this.fractalSpeed);
+    addParameter("Evolution Speed", this.fractalEvolution);
+
+    // Get the parameters to set the uniforms in the shader
+    float brightness = this.brightness.getValuef();
+    float size = this.size.getValuef();
+    float warp_speed_1 = this.warping_speed_1.getValuef();
+    float warp_speed_2 = this.warping_speed_2.getValuef();
+
+    // Load the shader and initialize the uniforms
+    shader = loadShader("./data/Shaders/Dark/MarbleFrag.glsl");
+    shader.set("iResolution", float(width), float(height));
+    shader.set("iTime", 0.0f);
+    shader.set("brightness", brightness);
+    shader.set("size", size);
+    shader.set("warping_speed_1", warp_speed_1);
+    shader.set("warping_speed_2", warp_speed_2);
+
+    // The colors of the shader
+    setShaderColor("colorA", this.colorA);
+    setShaderColor("colorB", this.colorB);
+
+    float fractalSize = this.fractalSize.getValuef();
+    float fractalSpeed = this.fractalSpeed.getValuef();
+    float evolutionSpeed = this.fractalEvolution.getValuef();
+    kifs = loadShader("./data/shaders/Dark/kifs.glsl");
+    kifs.set("iResolution", float(offscreen1.width), float(offscreen1.height));
+    kifs.set("fractalSize", fractalSize);
+    kifs.set("fractalSpeed", fractalSpeed);
+    kifs.set("evolutionSpeed", evolutionSpeed);
+
+    noStroke();
+    globe = createShape(SPHERE, 10000);
+
+    setVisible(false);
+  }
+
+  private void TexturedCube(PGraphics pg, PGraphics tex, int p) {
+    int s = p * 2;
+
+    pg.blendMode(NORMAL);
+
+    pg.push();
+    pg.translate(0, 0, p);
+    pg.imageMode(CENTER);
+    pg.image(tex, 0, 0, s, s);
+    pg.pop();
+
+    pg.push();
+    pg.translate(-p, 0, 0);
+    pg.rotateY(HALF_PI);
+    pg.imageMode(CENTER);
+    pg.image(tex, 0, 0, s, s);
+    pg.pop();
+
+    pg.push();
+    pg.translate(p, 0, 0);
+    pg.rotateY(-HALF_PI);
+    pg.imageMode(CENTER);
+    pg.image(tex, 0, 0, s, s);
+    pg.pop();
+
+    pg.push();
+    pg.translate(0, 0, -p);
+    pg.imageMode(CENTER);
+    pg.image(tex, 0, 0, s, s);
+    pg.pop();
+
+    // BOTTOM
+    pg.push();
+    pg.translate(0, -p-1, 0);
+    pg.imageMode(CENTER);
+    pg.rotateX(HALF_PI);
+    pg.rotateZ(-HALF_PI);
+    pg.image(tex, 0, 0, s, s);
+    pg.pop();
+
+    pg.blendMode(NORMAL);
+
+    // TOP
+    pg.push();
+    pg.translate(0, p+1, 0);
+    pg.imageMode(CENTER);
+    pg.rotateX(HALF_PI);
+    pg.rotateZ(HALF_PI);
+    pg.image(tex, 0, 0, s, s);
+    pg.pop();
+
+    pg.blendMode(NORMAL);
+  }
+
+  private int rgbf(float r, float g, float b) {
+    return LXColor.rgb((int) (r*255), (int) (g*255), (int) (b*255));
+  }
+
+  private void setShaderColor(String attribute, ColorParameter clr) {
+    int c = clr.getColor();
+    float r = ((c & 0xff0000) >> 16) / 255f;
+    float g = ((c & 0xff00) >> 8) / 255f;
+    float b = (c & 0xff) / 255f;
+    shader.set(attribute, r, g, b);
+  }
+
+  public String getName() {
+    return "KIFS";
+  }
+
+  public void beforeDraw(UI ui) {
+
+    // Get the parameters to set the uniforms in the shader
+    float brightness = this.brightness.getValuef();
+    float size = this.size.getValuef();
+    float warp_speed_1 = this.warping_speed_1.getValuef();
+    float warp_speed_2 = this.warping_speed_2.getValuef();
+
+    // Load the shader and initialize the uniforms
+    if (frameCount%100 == 0) {
+      shader = loadShader("./data/Shaders/Dark/MarbleFrag.glsl");
+      shader.set("iResolution", float(width), float(height));
+      kifs = loadShader("./data/shaders/Dark/kifs.glsl");
+      kifs.set("iResolution", float(offscreen1.width), float(offscreen1.height));
+    }
+    shader = loadShader("./data/Shaders/Dark/MarbleFrag.glsl");
+    shader.set("iResolution", float(width), float(height));
+    shader.set("iTime", millis() / 1000.0);
+    shader.set("brightness", brightness);
+    shader.set("size", size);
+    shader.set("warping_speed_1", warp_speed_1);
+    shader.set("warping_speed_2", warp_speed_2);
+
+    // The colors of the shader
+    setShaderColor("colorA", this.colorA);
+    setShaderColor("colorB", this.colorB);
+
+    offscreen1.beginDraw();
+    offscreen1.background(0);
+    offscreen1.shader(shader);
+    offscreen1.noStroke();
+    offscreen1.rectMode(CORNER);
+    offscreen1.rect(0, 0, offscreen1.width, offscreen1.height);
+    offscreen1.endDraw();
+
+    float fractalSize = this.fractalSize.getValuef();
+    float fractalSpeed = this.fractalSpeed.getValuef();
+    float evolutionSpeed = this.fractalEvolution.getValuef();
+    kifs.set("iTime", millis() / 1000.0);
+    kifs.set("iChannel0", offscreen1);
+    kifs.set("fractalSize", fractalSize);
+    kifs.set("fractalSpeed", fractalSpeed);
+    kifs.set("evolutionSpeed", evolutionSpeed);
+    offscreen2.beginDraw();
+    offscreen2.shader(kifs);
+    offscreen2.noStroke();
+    offscreen2.rect(0, 0, offscreen2.width, offscreen2.height);
+    offscreen2.endDraw();
+
+    globe.setTexture(offscreen2);
+  }
+
+  public void onDraw(UI ui, PGraphics pg) {
+
+    // It this doesn't need to be as texture
+    // Apply it as an env map
+    if (!this.isEnvironmentalMap.isOn()) {
+      TexturedCube(pg, offscreen2, 10000);
+    } else {
+      globe.setTexture(offscreen2);
+      pg.shape(globe);
     }
   }
 }
