@@ -2727,6 +2727,7 @@ class UIDark extends UIVisual {
   PGraphics offscreen1, offscreen2;
   PShape globe;
   PImage texture;
+  PGraphics texturedGraphics;
 
   public final ColorParameter colorA = 
     new ColorParameter("Color A", rgbf(0.06f, 0.96f, 0.99f));
@@ -2754,16 +2755,16 @@ class UIDark extends UIVisual {
     .setDescription("The size of the fractal");
 
   public final BoundedParameter fractalSpeed =
-    new BoundedParameter("Fractal Size", 0.1f, 0.f, 0.5f) 
+    new BoundedParameter("Fractal Speed", 0.1f, 0.f, 0.5f) 
     .setDescription("The size of the fractal");
 
   public final BoundedParameter fractalEvolution =
     new BoundedParameter("Evolution Speed", 0.1f, 0.0f, 0.5f) 
     .setDescription("Evolution Speed of the fractal");
 
-  public final BooleanParameter isEnvironmentalMap =
-    new BooleanParameter("Environmental Map", true)
-    .setDescription("Wheter the shader is applied as environmental map");
+  public final BooleanParameter useTexture =
+    new BooleanParameter("Use Texture", true)
+    .setDescription("Use the JPG texture rather than the generative one");
 
   public UIDark() {
 
@@ -2772,8 +2773,15 @@ class UIDark extends UIVisual {
     offscreen1 = createGraphics(pgw, pgh, P3D);
     offscreen2 = createGraphics(pgw, pgh, P3D);
 
+    texture = loadImage("./data/KIFS_textures/texture1.jpg");
+
+    texturedGraphics = createGraphics(1440, 1440, P3D);
+    texturedGraphics.beginDraw();
+    texturedGraphics.image(texture, 0, 0, texturedGraphics.width, texturedGraphics.height);
+    texturedGraphics.endDraw();
+
     // UI controls
-    addParameter("environmental Map", this.isEnvironmentalMap);
+    addParameter("use texture", this.useTexture);
     addParameter("ColorA", this.colorA);
     addParameter("ColorB", this.colorB);
     addParameter("brightness", this.brightness);
@@ -2897,12 +2905,6 @@ class UIDark extends UIVisual {
     float warp_speed_2 = this.warping_speed_2.getValuef();
 
     // Load the shader and initialize the uniforms
-    if (frameCount%100 == 0) {
-      shader = loadShader("./data/Shaders/Dark/MarbleFrag.glsl");
-      shader.set("iResolution", float(width), float(height));
-      kifs = loadShader("./data/shaders/Dark/kifs.glsl");
-      kifs.set("iResolution", float(offscreen1.width), float(offscreen1.height));
-    }
     shader = loadShader("./data/Shaders/Dark/MarbleFrag.glsl");
     shader.set("iResolution", float(width), float(height));
     shader.set("iTime", millis() / 1000.0);
@@ -2915,19 +2917,24 @@ class UIDark extends UIVisual {
     setShaderColor("colorA", this.colorA);
     setShaderColor("colorB", this.colorB);
 
-    offscreen1.beginDraw();
-    offscreen1.background(0);
-    offscreen1.shader(shader);
-    offscreen1.noStroke();
-    offscreen1.rectMode(CORNER);
-    offscreen1.rect(0, 0, offscreen1.width, offscreen1.height);
-    offscreen1.endDraw();
+    if (!this.useTexture.isOn()) {
+      offscreen1.beginDraw();
+      offscreen1.background(0);
+      offscreen1.shader(shader);
+      offscreen1.noStroke();
+      offscreen1.rectMode(CORNER);
+      offscreen1.rect(0, 0, offscreen1.width, offscreen1.height);
+      offscreen1.endDraw();
+    }
 
     float fractalSize = this.fractalSize.getValuef();
     float fractalSpeed = this.fractalSpeed.getValuef();
     float evolutionSpeed = this.fractalEvolution.getValuef();
+
+    if (!this.useTexture.isOn()) kifs.set("iChannel0", offscreen1);
+    else kifs.set("iChannel0", texturedGraphics);
+
     kifs.set("iTime", millis() / 1000.0);
-    kifs.set("iChannel0", offscreen1);
     kifs.set("fractalSize", fractalSize);
     kifs.set("fractalSpeed", fractalSpeed);
     kifs.set("evolutionSpeed", evolutionSpeed);
@@ -2944,11 +2951,6 @@ class UIDark extends UIVisual {
 
     // It this doesn't need to be as texture
     // Apply it as an env map
-    if (!this.isEnvironmentalMap.isOn()) {
-      TexturedCube(pg, offscreen2, 10000);
-    } else {
-      globe.setTexture(offscreen2);
-      pg.shape(globe);
-    }
+    TexturedCube(pg, offscreen2, 10000);
   }
 }
