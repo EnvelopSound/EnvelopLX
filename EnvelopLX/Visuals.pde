@@ -1913,261 +1913,6 @@ class UISeastorm extends UIVisual {
 
 
 
-///*
-// * AI Env
-// * Copyright 2020 - Giovanni Muzio
-// * https://kesson.io
-// *
-// */
-
-import processing.video.*;
-
-class UIArtificialEnvironment extends UIVisual {
-
-  private class Geometry {
-
-    Movie movie;
-
-    float[] glVertex;
-    float[] glUv;
-
-    int vertLoc;
-    int uvLoc;
-
-    PGL pgl;
-
-    PShader sh;
-
-    FloatBuffer pointBuffer;
-    FloatBuffer uvBuffer;
-
-    int vertexVboId;
-    int uvVboId;
-
-    int totalloop;
-
-    PGraphics offscreen, offscreen2;
-
-    Geometry(PGraphics pg, int total) {      
-
-      movie = new Movie(EnvelopLX.this, "ai_nebulas.mp4");
-      movie.loop();
-      movie.read();
-
-      offscreen = createGraphics(movie.width, movie.height, P3D);
-      offscreen2 = createGraphics(movie.width * 2, movie.height * 2, P3D);
-
-      totalloop = total * total;
-
-      this.sh = pg.loadShader("./data/shaders/aienv/fragment.glsl", "./data/shaders/aienv/vertex.glsl");
-
-      this.glVertex = new float[totalloop*3];
-      this.glUv = new float[totalloop * 2];
-
-      //this.sh.set("txtIn", null);
-      this.sh.set("radius", 2000.0);
-      this.sh.set("noiseDepth", 1000.0);
-
-      PGL pgl = pg.beginPGL();
-      this.sh.bind();
-
-      this.vertLoc = pgl.getAttribLocation(sh.glProgram, "vertex");
-      this.uvLoc = pgl.getAttribLocation(sh.glProgram, "uv");
-
-      IntBuffer intBuffer = IntBuffer.allocate(2);
-
-      pgl.genBuffers(2, intBuffer);
-
-      this.vertexVboId = intBuffer.get(0);
-      this.uvVboId = intBuffer.get(1);
-
-      this.sh.unbind();
-
-      pg.endPGL();
-
-      int vIndex = 0;
-      int uvIndex = 0;
-
-      for (int i = 0; i < total; i++) {
-
-        float lat = map(i, 0, total-1, 0, PI);
-
-        for (int j = 0; j < total; j++) {
-
-          float lon = map(j, 0, total-1, 0, TWO_PI);
-
-          this.glVertex[vIndex + 0] = sin(lat) * cos(lon);
-          this.glVertex[vIndex + 1] = sin(lat) * sin(lon);
-          this.glVertex[vIndex + 2] = cos(lat);
-
-          vIndex += 3;
-
-          glUv[uvIndex + 0] = map(i, 0, total-1, 0, 1);
-          glUv[uvIndex + 1] = map(j, 0, total-1, 0, 1);
-
-          uvIndex += 2;
-        }
-      }
-
-      pointBuffer = this.allocateDirectFloatBuffer(glVertex.length);
-      uvBuffer = this.allocateDirectFloatBuffer(glUv.length);
-
-      pointBuffer.rewind();
-      pointBuffer.put(glVertex);
-      pointBuffer.rewind();
-
-      uvBuffer.rewind();
-      uvBuffer.put(glUv);
-      uvBuffer.rewind();
-    }
-
-    public void setRadius(float v) {
-      this.sh.set("radius", v);
-    }
-
-    public void setDepth(float v) {
-      this.sh.set("noiseDepth", v);
-    }
-
-    public void setSound(String channel, float v) {
-      this.sh.set(channel, v);
-    }   
-
-    public void run(PGraphics pg) {
-
-      this.movie.read();
-
-      offscreen.beginDraw();
-      offscreen.background(0);
-      offscreen.image(this.movie, 0, 0, offscreen.width, offscreen.height);
-      offscreen.endDraw();
-
-      boolean mirror = true;
-      // Mirror the shader on the second offscreen
-      if (mirror) {
-        int w_ = offscreen2.width/2;
-        int h_ = offscreen2.height/2;
-        offscreen2.beginDraw();
-
-        offscreen2.image(offscreen, 0, 0, w_, h_);
-
-        offscreen2.pushMatrix();
-        offscreen2.translate(offscreen2.width, 0);
-        offscreen2.scale(-1, 1);
-        offscreen2.image(offscreen, 0, 0, w_, h_);
-        offscreen2.popMatrix();
-
-        offscreen2.pushMatrix();
-        offscreen2.translate(offscreen2.width, offscreen2.height);
-        offscreen2.scale(-1, -1);
-        offscreen2.image(offscreen, 0, 0, w_, h_);
-        offscreen2.popMatrix();
-
-        offscreen2.pushMatrix();
-        offscreen2.translate(0, offscreen2.height);
-        offscreen2.scale(1, -1);
-        offscreen2.image(offscreen, 0, 0, w_, h_);
-        offscreen2.popMatrix();
-
-        offscreen2.endDraw();
-      }
-
-      if (mirror) this.sh.set("txtIn", offscreen2);
-      else this.sh.set("txtIn", offscreen);
-
-      pgl = pg.beginPGL();
-
-      this.sh.bind();
-
-      //
-      /* VERTEX */
-      pgl.enableVertexAttribArray(vertLoc);
-      int vertData = glVertex.length;
-      pgl.bindBuffer(PGL.ARRAY_BUFFER, vertexVboId);
-      pgl.bufferData(PGL.ARRAY_BUFFER, Float.BYTES * vertData, pointBuffer, PGL.DYNAMIC_DRAW);
-      pgl.vertexAttribPointer(vertLoc, 3, PGL.FLOAT, false, Float.BYTES * 3, 0 );
-
-      //
-      /* RADIUS */
-      pgl.enableVertexAttribArray(uvLoc);
-      int uvData = glUv.length;
-      pgl.bindBuffer(PGL.ARRAY_BUFFER, uvVboId);
-      pgl.bufferData(PGL.ARRAY_BUFFER, Float.BYTES * uvData, uvBuffer, PGL.DYNAMIC_DRAW);
-      pgl.vertexAttribPointer(uvLoc, 2, PGL.FLOAT, false, Float.BYTES * 2, 0 );
-
-      //
-      /* DRAW */
-      pgl.bindBuffer(PGL.ARRAY_BUFFER, 0);
-      pgl.drawArrays(PGL.POINTS, 0, vertData);
-
-      pgl.disableVertexAttribArray(vertLoc);
-      pgl.disableVertexAttribArray(uvLoc);
-
-      pgl.bindBuffer(PGL.ARRAY_BUFFER, 0);
-
-      this.sh.unbind();
-      pg.endPGL();
-    }
-
-    private FloatBuffer allocateDirectFloatBuffer(int n) {
-      return ByteBuffer.allocateDirect(n * Float.BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
-    }
-  }
-
-  public final BooleanParameter soundReactive =
-    new BooleanParameter("Sound Reactive", false)
-    .setDescription("Is it sound reactive?");
-
-  public final BoundedParameter noiseDepth =
-    new BoundedParameter("Noise Depth", 1000.0f, 0.0f, 3000.0f)
-    .setDescription("How much is the depth map on the sphere");
-
-  public final BoundedParameter radius =
-    new BoundedParameter("Radius", 2000.0f, 2.0f, 20000.0f)
-    .setDescription("How much is the depth map on the sphere");
-
-  public String getName() {
-    return "AI Nebulas";
-  }
-
-  Geometry geometry;
-  PApplet applet;
-
-  public UIArtificialEnvironment() {
-
-    addParameter("noiseDepth", this.noiseDepth);
-    addParameter("Radius", this.radius);
-    addParameter("Sound Reactive", this.soundReactive);
-
-    setVisible(false);
-  }
-
-  public void beforeDraw(UI ui) {
-    if (this.geometry != null) {
-      this.geometry.setDepth(this.noiseDepth.getValuef());
-      this.geometry.setRadius(this.radius.getValuef());
-      for (int i = 0; i < 8; i++) {
-        if (this.soundReactive.isOn()) {
-          this.geometry.setSound("Channel" + i, envelop.decode.channels[i].getNormalizedf());
-        } else {
-          this.geometry.setSound("Channel" + i, 0.0);
-        }
-      }
-    }
-  }
-
-  public void onDraw(UI ui, PGraphics pg) {
-
-    if (this.geometry == null) this.geometry = new Geometry(pg, 500);
-
-    pg.push();
-    this.geometry.run(pg);
-    pg.pop();
-  }
-}
-
-
-
 /*
  * Timeless Depths artwork in GLSL
  * Copyright 2020 - Giovanni Muzio
@@ -2719,7 +2464,7 @@ class UIStarfield extends UIVisual {
  *
  */
 
-class UIDark extends UIVisual {
+class UIKIFS extends UIVisual {
 
   PShader shader;
   PShader sblur;
@@ -2766,15 +2511,17 @@ class UIDark extends UIVisual {
     new BooleanParameter("Use Texture", true)
     .setDescription("Use the JPG texture rather than the generative one");
 
-  public UIDark() {
+  public UIKIFS() {
 
     // Offscreen PGraphics
     int pgw = 1080, pgh = 1080;
     offscreen1 = createGraphics(pgw, pgh, P3D);
     offscreen2 = createGraphics(pgw, pgh, P3D);
 
+    // Texture image and PGraphics
     texture = loadImage("./data/KIFS_textures/texture1.jpg");
-
+    
+    // The PGraphics gets passed to the shader instead of the Warping Domain shader
     texturedGraphics = createGraphics(1440, 1440, P3D);
     texturedGraphics.beginDraw();
     texturedGraphics.image(texture, 0, 0, texturedGraphics.width, texturedGraphics.height);
@@ -2819,9 +2566,6 @@ class UIDark extends UIVisual {
     kifs.set("fractalSize", fractalSize);
     kifs.set("fractalSpeed", fractalSpeed);
     kifs.set("evolutionSpeed", evolutionSpeed);
-
-    noStroke();
-    globe = createShape(SPHERE, 10000);
 
     setVisible(false);
   }
@@ -2916,7 +2660,8 @@ class UIDark extends UIVisual {
     // The colors of the shader
     setShaderColor("colorA", this.colorA);
     setShaderColor("colorB", this.colorB);
-
+  
+    // If using the JPG texture is pointless to render the warping domain shader
     if (!this.useTexture.isOn()) {
       offscreen1.beginDraw();
       offscreen1.background(0);
@@ -2948,9 +2693,6 @@ class UIDark extends UIVisual {
   }
 
   public void onDraw(UI ui, PGraphics pg) {
-
-    // It this doesn't need to be as texture
-    // Apply it as an env map
     TexturedCube(pg, offscreen2, 10000);
   }
 }
