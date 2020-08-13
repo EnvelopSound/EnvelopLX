@@ -43,9 +43,10 @@ public class FileButton extends UIButton {
   }
       
   public void fileSelected(File file) {
-    String relativePath = new File(sketchPath()).getAbsoluteFile().toURI().relativize(file.getAbsoluteFile().toURI()).getPath();
-    println(relativePath);
-    this.fp.setValue(relativePath);
+    if (file != null) {
+      String relativePath = new File(sketchPath()).getAbsoluteFile().toURI().relativize(file.getAbsoluteFile().toURI()).getPath();
+      this.fp.setValue(relativePath);
+    }
   }
 }
   
@@ -2563,7 +2564,7 @@ class UIKIFS extends UIVisual {
     new BooleanParameter("Use Texture", true)
     .setDescription("Use the JPG texture rather than the generative one");
 
-  public final FileParameter textureFile =
+  public final FileParameter textureFile = (FileParameter)
     new FileParameter("Texture", "data/KIFS_textures/texture1.jpg")
     .setDescription("Which JPG texture file to use");
 
@@ -2582,6 +2583,7 @@ class UIKIFS extends UIVisual {
     
     // UI controls
     addParameter("use texture", this.useTexture);
+    addParameter("File", this.textureFile);
     addParameter("ColorA", this.colorA);
     addParameter("ColorB", this.colorB);
     addParameter("brightness", this.brightness);
