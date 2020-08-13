@@ -2689,7 +2689,6 @@ class UIKIFS extends UIVisual {
     offscreen2.rect(0, 0, offscreen2.width, offscreen2.height);
     offscreen2.endDraw();
 
-    globe.setTexture(offscreen2);
   }
 
   public void onDraw(UI ui, PGraphics pg) {

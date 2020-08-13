@@ -321,9 +321,6 @@ public class Envelop extends LXRunnableComponent {
       // Worley texture visual
       addVisual(new UIWorleyBulb());
       
-      // Liquid Dreams based visual
-      addVisual(new UIArtificialEnvironment());
-      
       // Timeless Depths based visual
       addVisual(new UIDepths());
       
@@ -333,7 +330,7 @@ public class Envelop extends LXRunnableComponent {
        //Seastorm based visual
       addVisual(new UISeastorm());
       
-      addVisual(new UIDark());
+      addVisual(new UIKIFS());
     }
     
     protected void beforeDraw() {
