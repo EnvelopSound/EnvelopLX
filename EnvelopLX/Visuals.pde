@@ -2563,6 +2563,12 @@ class UIKIFS extends UIVisual {
     new BooleanParameter("Use Texture", true)
     .setDescription("Use the JPG texture rather than the generative one");
 
+  public final FileParameter textureFile =
+    new FileParameter("Texture", "data/KIFS_textures/texture1.jpg")
+    .setDescription("Which JPG texture file to use");
+
+  private String loadedTexture = null;
+
   public UIKIFS() {
 
     // Offscreen PGraphics
@@ -2571,14 +2577,9 @@ class UIKIFS extends UIVisual {
     offscreen2 = createGraphics(pgw, pgh, P3D);
 
     // Texture image and PGraphics
-    texture = loadImage("./data/KIFS_textures/texture1.jpg");
-
-    // The PGraphics gets passed to the shader instead of the Warping Domain shader
     texturedGraphics = createGraphics(1440, 1440, P3D);
-    texturedGraphics.beginDraw();
-    texturedGraphics.image(texture, 0, 0, texturedGraphics.width, texturedGraphics.height);
-    texturedGraphics.endDraw();
-
+    loadTexture();
+    
     // UI controls
     addParameter("use texture", this.useTexture);
     addParameter("ColorA", this.colorA);
@@ -2620,6 +2621,16 @@ class UIKIFS extends UIVisual {
     kifs.set("evolutionSpeed", evolutionSpeed);
 
     setVisible(false);
+  }
+  
+  private void loadTexture() {
+    texture = loadImage(this.loadedTexture = this.textureFile.getString());
+   
+    // The PGraphics gets passed to the shader instead of the Warping Domain shader
+    texturedGraphics.beginDraw();
+    texturedGraphics.image(texture, 0, 0, texturedGraphics.width, texturedGraphics.height);
+    texturedGraphics.endDraw();
+
   }
 
   private void TexturedCube(PGraphics pg, PGraphics tex, int p) {
@@ -2694,6 +2705,11 @@ class UIKIFS extends UIVisual {
 
   public void beforeDraw(UI ui) {
 
+    String newTexture = this.textureFile.getString();
+    if (newTexture != this.loadedTexture) {
+      loadTexture();
+    }
+    
     // Get the parameters to set the uniforms in the shader
     float brightness = this.brightness.getValuef();
     float size = this.size.getValuef();
