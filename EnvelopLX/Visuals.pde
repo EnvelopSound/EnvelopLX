@@ -1,5 +1,55 @@
 import java.util.LinkedHashMap;
 
+public class FileParameter extends StringParameter {
+  public FileParameter(String label, String defaultFilename) {
+    super(label, defaultFilename);
+  }
+  
+  public File getFile() {
+    String filename = getString();
+    return (filename != null) ? new File(filename) : null;
+  }
+}
+
+public class FileButton extends UIButton {
+  
+  private final FileParameter fp;
+  
+  public FileButton(float x, float y, float w, float h, final FileParameter fp) {
+    super(x, y, w, h);
+    this.fp = fp;
+    setMomentary(true);
+    fp.addListener(new LXParameterListener() {
+      public void onParameterChanged(LXParameter p) {
+        setFileLabel();
+      }
+    });
+    setFileLabel();
+  }
+  
+  private void setFileLabel() {
+    String path = this.fp.getString();
+    if (path == null) {
+      setLabel("<no file>");
+    } else {
+      String[] parts = path.split(File.separator);
+      setLabel(parts[parts.length-1]);
+    }
+  }
+  
+  @Override
+  protected void onClick() {
+    selectInput("Select a file:", "fileSelected", new File(sketchPath()), this); 
+  }
+      
+  public void fileSelected(File file) {
+    String relativePath = new File(sketchPath()).getAbsoluteFile().toURI().relativize(file.getAbsoluteFile().toURI()).getPath();
+    println(relativePath);
+    this.fp.setValue(relativePath);
+  }
+}
+  
+
 /**
  * Abstract class for a visual simulation effect in the preview rendering environment.
  * These effects can essentially render anything they like using a 3D PGraphics object,
@@ -56,7 +106,9 @@ public abstract class UIVisual extends UI3dComponent implements LXSerializable {
     float xp = controls.getContentWidth() - controlWidth;
     for (LXParameter p : this.parameters.values()) {
       UI2dComponent control = null;
-      if (p instanceof BooleanParameter) {
+      if (p instanceof FileParameter) {
+        control = new FileButton(xp, yp, controlWidth, 16, (FileParameter) p);
+      } else if (p instanceof BooleanParameter) {
         control = new UIButton(xp, yp, controlWidth, 16).setParameter((BooleanParameter) p).setActiveLabel("On").setInactiveLabel("Off");
       } else if (p instanceof BoundedParameter) {
         control = new UIDoubleBox(xp, yp, controlWidth, 16).setParameter((BoundedParameter) p);
@@ -2520,7 +2572,7 @@ class UIKIFS extends UIVisual {
 
     // Texture image and PGraphics
     texture = loadImage("./data/KIFS_textures/texture1.jpg");
-    
+
     // The PGraphics gets passed to the shader instead of the Warping Domain shader
     texturedGraphics = createGraphics(1440, 1440, P3D);
     texturedGraphics.beginDraw();
@@ -2660,7 +2712,7 @@ class UIKIFS extends UIVisual {
     // The colors of the shader
     setShaderColor("colorA", this.colorA);
     setShaderColor("colorB", this.colorB);
-  
+
     // If using the JPG texture is pointless to render the warping domain shader
     if (!this.useTexture.isOn()) {
       offscreen1.beginDraw();
