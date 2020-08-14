@@ -101,8 +101,13 @@ public void initializeUI(LXStudio lx, LXStudio.UI ui) {
 }
     
 public void onUIReady(LXStudio lx, LXStudio.UI ui) {
-  envelop.ui.onReady(lx, ui);
-  ui.leftPane.setActiveSection(2);
+  try {
+    envelop.ui.onReady(lx, ui);
+    ui.leftPane.setActiveSection(2);
+  } catch (Exception x) {
+    x.printStackTrace();
+    throw x;
+  }
 }
 
 void pre() {
