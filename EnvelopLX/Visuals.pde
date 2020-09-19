@@ -32,8 +32,11 @@ public class FileButton extends UIButton {
     if (path == null) {
       setLabel("<no file>");
     } else {
-      String[] parts = path.split(File.separator);
-      setLabel(parts[parts.length-1]);
+      int index = path.lastIndexOf(File.separator);
+      if (index >= 0) {
+        path = path.substring(index+1);
+      }
+      setLabel(path);
     }
   }
   
